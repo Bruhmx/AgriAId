@@ -1,11 +1,8 @@
 # user_routes.py (import this in your main app.py)
 import json
-import mysql.connector
 
 from flask import render_template, request, session, redirect, url_for, flash, jsonify, Response, make_response, \
     send_file
-
-from mysql.connector import IntegrityError
 
 from db_config import get_db
 from auth import hash_password, check_password, validate_email, validate_password, login_required
@@ -2375,71 +2372,6 @@ def register_user_routes(app):
             traceback.print_exc()
             flash('Error loading feedback', 'error')
             return redirect(url_for('admin_dashboard'))
-    def admin_feedback():
-        """Admin view to see all feedback"""
-        # Check if user is admin
-        if session.get('user_type') != 'admin':
-            flash('Unauthorized access', 'error')
-            return redirect(url_for('dashboard'))
-
-        try:
-            db = get_db()
-            cur = db.cursor(dictionary=True)
-
-            # Get filter parameters
-            status = request.args.get('status', '')
-            category = request.args.get('category', '')
-            search = request.args.get('search', '')
-
-            # Base query - REMOVED diagnosis_history JOIN
-            query = """
-                SELECT f.*, u.username, u.full_name, u.email, u.user_type
-                FROM feedback f
-                LEFT JOIN users u ON f.user_id = u.id
-                WHERE 1=1
-            """
-            params = []
-
-            # Add filters
-            if status:
-                query += " AND f.status = %s"
-                params.append(status)
-
-            if category:
-                query += " AND f.feedback_type = %s"
-                params.append(category)
-
-            if search:
-                query += " AND (f.subject LIKE %s OR f.message LIKE %s OR f.name LIKE %s OR f.email LIKE %s)"
-                search_term = f"%{search}%"
-                params.extend([search_term, search_term, search_term, search_term])
-
-            query += " ORDER BY f.created_at DESC"
-
-            cur.execute(query, params)
-            feedback_list = cur.fetchall()
-
-            # Get unique categories for filter dropdown
-            cur.execute("SELECT DISTINCT feedback_type FROM feedback")
-            category_rows = cur.fetchall()
-            categories = [row['feedback_type'] for row in category_rows if row['feedback_type']]
-
-            cur.close()
-            db.close()
-
-            return render_template('admin/feedback.html',
-                                   feedback=feedback_list,
-                                   categories=categories,
-                                   current_status=status,
-                                   current_category=category,
-                                   current_search=search)
-
-        except Exception as e:
-            print(f"Error loading feedback: {e}")
-            import traceback
-            traceback.print_exc()
-            flash('Error loading feedback', 'error')
-            return redirect(url_for('admin_dashboard'))
 
     @app.route("/admin/feedback/<int:feedback_id>", methods=["GET"])
     @login_required
@@ -3690,12 +3622,6 @@ def register_user_routes(app):
             print(f"Successfully updated diagnosis {diagnosis_id}")
             return jsonify({'success': True})
 
-        except IntegrityError as err:
-            print(f"Integrity Error: {err}")
-            return jsonify({'success': False, 'error': f"Database constraint error: {err.msg}"}), 500
-        except mysql.connector.Error as err:
-            print(f"MySQL Error: {err}")
-            return jsonify({'success': False, 'error': f"Database error: {err.msg}"}), 500
         except Exception as e:
             print(f"Review error: {e}")
             import traceback
@@ -4176,7 +4102,7 @@ def register_user_routes(app):
             cur.execute("""
                 INSERT INTO questions 
                 (crop, disease_code, question_text, question_category, display_order, created_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
             """, (crop, disease_code, question_text, question_category, display_order))
 
             db.commit()
@@ -4890,13 +4816,6 @@ def register_user_routes(app):
                     'image_url': image_url
                 })
 
-            except mysql.connector.errors.OperationalError as e:
-                if "max_allowed_packet" in str(e):
-                    return jsonify({
-                        'success': False,
-                        'message': 'Image too large even after compression. Please use a smaller image.'
-                    }), 400
-                raise e
             except Exception as e:
                 print(f"❌ Database error during upload: {e}")
                 import traceback

@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 try:
     crop_model = tf.keras.models.load_model("models/crop_model_final.keras")
     corn_model = tf.keras.models.load_model("models/corn_model_final.keras")
-    rice_model = tf.keras.models.load_model("models/rice_model_old.keras")
+    rice_model = tf.keras.models.load_model("models/rice_model_final.keras")
     print("✓ Models loaded successfully")
 except Exception as e:
     print(f"✗ Error loading models: {e}")

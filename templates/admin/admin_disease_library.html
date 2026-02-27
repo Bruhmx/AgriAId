@@ -1,0 +1,1631 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Disease Library - AgriAId Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-2"><i class="fas fa-book-medical me-2"></i>Disease Library Management</h2>
+                            <p class="mb-0 opacity-8">Comprehensive information about crop diseases and their management</p>
+                        </div>
+                        <div>
+                            <span class="badge bg-white text-primary p-3">
+                                <i class="fas fa-database me-2"></i>Total Diseases: {{ diseases|length if diseases else 0 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3"><i class="fas fa-filter me-2"></i>Filter by Crop</h6>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('admin_disease_library') }}?crop=corn"
+                           class="btn btn-outline-success {{ 'active' if crop == 'corn' else '' }}">
+                            <i class="fas fa-corn me-2"></i>Corn
+                            {% if crop_stats and crop_stats.corn_count %}
+                            <span class="badge bg-success ms-2">{{ crop_stats.corn_count }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="{{ url_for('admin_disease_library') }}?crop=rice"
+                           class="btn btn-outline-success {{ 'active' if crop == 'rice' else '' }}">
+                            <i class="fas fa-rice me-2"></i>Rice
+                            {% if crop_stats and crop_stats.rice_count %}
+                            <span class="badge bg-success ms-2">{{ crop_stats.rice_count }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="showAddDiseaseForm()">
+                            <i class="fas fa-plus me-2"></i>Add New Disease
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disease Cards Grid -->
+    {% if diseases %}
+    <div class="row" id="diseasesContainer">
+        {% for disease in diseases %}
+        <div class="col-xl-4 col-lg-6 mb-4" id="disease-{{ disease.disease_code }}">
+            <div class="card disease-card h-100 shadow-sm">
+                <div class="row g-0 h-100">
+                    <div class="col-md-5 position-relative">
+                        <!-- UPDATED: Use the image serving route for BLOB images -->
+                        <img src="{% if disease.sample_image %}{{ disease.sample_image }}{% else %}{{ url_for('static', filename='img/disease-placeholder.jpg') }}{% endif %}"
+                             class="img-fluid rounded-start h-100"
+                             alt="{{ disease.disease_name|default(disease.disease_code) }}"
+                             style="object-fit: cover; height: 100%; width: 100%; min-height: 200px;"
+                             onerror="this.src='{{ url_for('static', filename='img/disease-placeholder.jpg') }}'">
+                        {% if disease.sample_count %}
+                        <span class="badge bg-primary position-absolute top-0 start-0 m-2">
+                            <i class="fas fa-images me-1"></i>{{ disease.sample_count }} samples
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-7">
+                        <div class="card-body d-flex flex-column h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <!-- REMOVED: disease_name doesn't exist, use disease_code as display name -->
+                                <h5 class="card-title mb-0">{{ disease.disease_code|replace('_', ' ')|title }}</h5>
+                                <span class="badge bg-info">{{ crop_display }}</span>
+                            </div>
+
+                            <p class="card-text text-muted small mb-2">
+                                <strong>Code:</strong> {{ disease.disease_code }}
+                            </p>
+
+                            <p class="card-text small mb-3">
+                                <strong>Symptoms:</strong>
+                                {{ disease.symptoms[:100] if disease.symptoms else 'No description available' }}...
+                            </p>
+
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-info"
+                                                onclick="showDiseaseInfo('{{ crop }}', '{{ disease.disease_code }}')"
+                                                title="View Details">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning"
+                                                onclick="editDisease('{{ disease.disease_code }}', '{{ crop }}')"
+                                                title="Edit Disease">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger"
+                                                onclick="deleteDisease('{{ disease.disease_code }}', '{{ crop }}')"
+                                                title="Delete Disease">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar-alt me-1"></i>
+                                        {{ disease.created_at|default('Recently added', true) }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination and pagination.pages > 1 %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Disease library pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                        <a class="page-link" href="{{ url_for('admin_disease_library', crop=crop, page=pagination.prev_num) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {{ 'active' if page_num == pagination.page }}">
+                                <a class="page-link" href="{{ url_for('admin_disease_library', crop=crop, page=page_num) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                        <a class="page-link" href="{{ url_for('admin_disease_library', crop=crop, page=pagination.next_num) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="py-5">
+                        <i class="fas fa-seedling fa-4x text-muted mb-3"></i>
+                        <h4>No disease information available</h4>
+                        <p class="text-muted mb-4">
+                            {% if crop %}
+                            No diseases found for {{ crop_display }}. Add your first disease to get started.
+                            {% else %}
+                            Select a crop type to view or add disease information.
+                            {% endif %}
+                        </p>
+                        {% if crop %}
+                        <button class="btn btn-primary btn-lg" onclick="showAddDiseaseForm()">
+                            <i class="fas fa-plus me-2"></i>Add First Disease
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Disease Info Modal with Edit Tabs -->
+<div class="modal fade" id="diseaseInfoModal" tabindex="-1" aria-labelledby="diseaseInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="diseaseInfoModalLabel">
+                    <i class="fas fa-info-circle me-2"></i>Disease Information
+                </h5>
+                <div class="ms-auto">
+                    <button class="btn btn-light btn-sm me-2" onclick="toggleEditMode()" id="editModeToggle">
+                        <i class="fas fa-edit me-1"></i>Edit Mode
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body" id="diseaseInfoContent">
+                <!-- Content loaded via JavaScript -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading disease information...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+                <button type="button" class="btn btn-info" onclick="printDiseaseInfo()">
+                    <i class="fas fa-print me-2"></i>Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Disease Modal -->
+<div class="modal fade" id="inlineEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit Disease Information
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inlineEditForm">
+                    <input type="hidden" id="editDiseaseCode" name="disease_code">
+                    <input type="hidden" id="editCrop" name="crop">
+
+                    <!-- Basic Information -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="editDiseaseCodeDisplay" class="form-label">Disease Code</label>
+                                    <input type="text" class="form-control" id="editDiseaseCodeDisplay" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="editCropDisplay" class="form-label">Crop</label>
+                                    <input type="text" class="form-control" id="editCropDisplay" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Image - UPDATED for BLOB storage -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-image me-2"></i>Main Disease Image</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 text-center">
+                                    <img id="editMainImagePreview" src="" class="img-thumbnail mb-2" style="max-height: 150px;">
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadMainImage()">
+                                            <i class="fas fa-upload me-1"></i>Change Image
+                                        </button>
+                                        <input type="file" id="editMainImageFile" accept="image/*" style="display: none;" onchange="previewAndUploadMainImage(this)">
+                                    </div>
+                                    <small class="text-muted d-block mt-2">Images are stored directly in database</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editCause" class="form-label">Causal Agent</label>
+                                    <textarea class="form-control" id="editCause" rows="2" placeholder="e.g., Fungus Cercospora zeae-maydis"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Symptoms -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-eye me-2"></i>Symptoms</h6>
+                        </div>
+                        <div class="card-body">
+                            <textarea class="form-control" id="editSymptoms" rows="3" placeholder="Describe the symptoms..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Cards -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-leaf me-2"></i>Organic Treatment</h6>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="editOrganicTreatment" rows="2" placeholder="Organic/biological control methods"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0"><i class="fas fa-flask me-2"></i>Chemical Treatment</h6>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="editChemicalTreatment" rows="2" placeholder="Recommended fungicides/pesticides"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Prevention</h6>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="editPrevention" rows="2" placeholder="Preventive measures"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-hand-paper me-2"></i>Manual Treatment</h6>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="editManualTreatment" rows="2" placeholder="Cultural practices and manual control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Images Management - UPDATED for BLOB storage -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-images me-2"></i>Sample Images Gallery</h6>
+                            <button type="button" class="btn btn-sm btn-success" onclick="showAddSampleModalInline()">
+                                <i class="fas fa-plus me-1"></i>Add Sample
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="editSampleImagesContainer" class="row">
+                                <!-- Sample images will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveInlineEdits()">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Sample Modal (for inline editing) - UPDATED for BLOB storage -->
+<div class="modal fade" id="inlineSampleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add Sample Image</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inlineSampleForm">
+                    <input type="hidden" id="inlineSampleDiseaseCode">
+                    <input type="hidden" id="inlineSampleCrop">
+
+                    <div class="mb-3">
+                        <label for="inlineSampleImageFile" class="form-label">Image File *</label>
+                        <input type="file" class="form-control" id="inlineSampleImageFile" accept="image/*" required>
+                        <div id="inlineSampleImagePreviewContainer" class="mt-2" style="display: none;">
+                            <img id="inlineSampleImagePreview" src="" class="img-thumbnail" style="max-height: 100px;">
+                        </div>
+                        <small class="text-muted">Image will be stored directly in database</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="inlineSampleTitle" class="form-label">Image Title</label>
+                        <input type="text" class="form-control" id="inlineSampleTitle" placeholder="e.g., Early stage lesions">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="inlineSampleDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="inlineSampleDescription" rows="2" placeholder="Describe what this image shows"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="inlineSampleSeverity" class="form-label">Severity Level</label>
+                        <select class="form-control" id="inlineSampleSeverity">
+                            <option value="Early">Early</option>
+                            <option value="Moderate">Moderate</option>
+                            <option value="Advanced">Advanced</option>
+                            <option value="Severe">Severe</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveInlineSample()">
+                    <i class="fas fa-save me-2"></i>Add Sample
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Sample Modal - UPDATED for BLOB storage -->
+<div class="modal fade" id="editSampleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Sample Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSampleForm">
+                    <input type="hidden" id="editSampleId">
+
+                    <div class="mb-3 text-center">
+                        <img id="editSamplePreview" src="" class="img-thumbnail mb-2" style="max-height: 150px;">
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadNewSampleImage()">
+                                <i class="fas fa-upload me-1"></i>Change Image
+                            </button>
+                            <input type="file" id="editSampleImageFile" accept="image/*" style="display: none;" onchange="previewEditSampleImage(this)">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editSampleTitle" class="form-label">Image Title</label>
+                        <input type="text" class="form-control" id="editSampleTitle">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editSampleDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editSampleDescription" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editSampleSeverity" class="form-label">Severity Level</label>
+                        <select class="form-control" id="editSampleSeverity">
+                            <option value="Early">Early</option>
+                            <option value="Moderate">Moderate</option>
+                            <option value="Advanced">Advanced</option>
+                            <option value="Severe">Severe</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveSampleEdits()">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Disease Modal - UPDATED for BLOB storage -->
+<div class="modal fade" id="diseaseFormModal" tabindex="-1" aria-labelledby="diseaseFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="diseaseFormModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Add New Disease
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="diseaseForm">
+                    <input type="hidden" id="diseaseId" name="diseaseId">
+                    <input type="hidden" id="originalDiseaseCode" name="originalDiseaseCode">
+                    <input type="hidden" id="originalCrop" name="originalCrop">
+                    <!-- REMOVED: sample_image hidden field - we'll use BLOB storage -->
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="diseaseCode" class="form-label">Disease Code *</label>
+                            <input type="text" class="form-control" id="diseaseCode" name="disease_code" required
+                                   placeholder="e.g., CERCOSPORA">
+                            <small class="text-muted">Unique identifier (uppercase, no spaces)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cropType" class="form-label">Crop Type *</label>
+                            <select class="form-control" id="cropType" name="crop" required>
+                                <option value="">Select Crop</option>
+                                <option value="corn">Corn</option>
+                                <option value="rice">Rice</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- File upload for main sample image - UPDATED for BLOB -->
+                    <div class="mb-3">
+                        <label class="form-label">Sample Image</label>
+
+                        <!-- Current image preview (for edit mode) -->
+                        <div id="currentImageContainer" class="mb-2" style="display: none;">
+                            <label class="text-muted small">Current Image:</label>
+                            <div class="d-flex align-items-center">
+                                <img id="currentImagePreview" src="" class="img-thumbnail me-2" style="max-height: 80px;">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearCurrentImage()">
+                                    <i class="fas fa-times"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- File upload input -->
+                        <div class="input-group">
+                            <input type="file" class="form-control" id="imageFile" accept="image/*" onchange="previewSelectedImage(this)">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearFileSelection()">
+                                <i class="fas fa-times"></i> Clear
+                            </button>
+                        </div>
+
+                        <!-- New image preview -->
+                        <div id="newImagePreviewContainer" class="mt-2" style="display: none;">
+                            <label class="text-muted small">New Image Preview:</label>
+                            <img id="newImagePreview" src="" class="img-thumbnail" style="max-height: 150px;">
+                        </div>
+
+                        <small class="text-muted">Select an image from your device (JPG, PNG, GIF). Images are stored directly in database.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cause" class="form-label">Causal Agent *</label>
+                        <textarea class="form-control" id="cause" name="cause" rows="2" required
+                                  placeholder="e.g., Fungus Cercospora zeae-maydis"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="symptoms" class="form-label">Symptoms *</label>
+                        <textarea class="form-control" id="symptoms" name="symptoms" rows="3" required
+                                  placeholder="Describe the symptoms..."></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="organicTreatment" class="form-label">Organic Treatment</label>
+                            <textarea class="form-control" id="organicTreatment" name="organic_treatment" rows="2"
+                                      placeholder="Organic/biological control methods"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="chemicalTreatment" class="form-label">Chemical Treatment</label>
+                            <textarea class="form-control" id="chemicalTreatment" name="chemical_treatment" rows="2"
+                                      placeholder="Recommended fungicides/pesticides"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="prevention" class="form-label">Prevention</label>
+                            <textarea class="form-control" id="prevention" name="prevention" rows="2"
+                                      placeholder="Preventive measures"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="manualTreatment" class="form-label">Manual Treatment</label>
+                            <textarea class="form-control" id="manualTreatment" name="manual_treatment" rows="2"
+                                      placeholder="Cultural practices and manual control"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        After adding the disease, you can add more sample images from the details view.
+                        All images are stored directly in the database for better performance and security.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveDisease()">
+                    <i class="fas fa-save me-2"></i>Save Disease
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this disease?</p>
+                <p class="text-muted">This will delete all sample images and information associated with this disease.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+// Global variables
+let currentCrop = '{{ crop }}';
+let deleteDiseaseCode = null;
+let deleteCrop = null;
+let currentDiseaseCode = null;
+let currentDiseaseCrop = null;
+let isEditMode = false;
+let currentDiseaseData = null;
+
+// Function to show disease information
+function showDiseaseInfo(crop, diseaseCode) {
+    currentDiseaseCode = diseaseCode;
+    currentDiseaseCrop = crop;
+    isEditMode = false;
+
+    // Reset edit mode button
+    const editToggle = document.getElementById('editModeToggle');
+    if (editToggle) {
+        editToggle.innerHTML = '<i class="fas fa-edit me-1"></i>Edit Mode';
+        editToggle.classList.remove('btn-danger');
+        editToggle.classList.add('btn-light');
+    }
+
+    // Show loading state
+    document.getElementById('diseaseInfoContent').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading disease information...</p>
+        </div>
+    `;
+
+    // Fetch disease info
+    fetch(`/api/disease-info?crop=${crop}&disease=${diseaseCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentDiseaseData = data;
+                displayDiseaseInfo(data);
+            } else {
+                document.getElementById('diseaseInfoContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Could not load disease information. Please try again.
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('diseaseInfoContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading disease information.
+                </div>
+            `;
+        });
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('diseaseInfoModal'));
+    modal.show();
+}
+
+// Edit disease directly
+function editDisease(diseaseCode, crop) {
+    currentDiseaseCode = diseaseCode;
+    currentDiseaseCrop = crop;
+
+    fetch(`/api/disease-info?crop=${crop}&disease=${diseaseCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentDiseaseData = data;
+                showEditInterface();
+            } else {
+                alert('Error loading disease data for editing');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading disease data');
+        });
+}
+
+// Display disease information in modal
+function displayDiseaseInfo(data) {
+    // Create display name from disease code
+    const displayName = data.disease_name || data.disease_code.replace(/_/g, ' ').replace(/\w\S*/g, function(txt){
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+
+    const content = `
+        <div class="disease-info">
+            <div class="row mb-4">
+                <div class="col-md-4 text-center">
+                    <img src="${data.image_url || '{{ url_for('static', filename='img/disease-placeholder.jpg') }}'}"
+                         class="img-fluid rounded mb-3"
+                         alt="${displayName}"
+                         style="max-height: 200px; width: 100%; object-fit: cover;"
+                         onerror="this.src='{{ url_for('static', filename='img/disease-placeholder.jpg') }}'">
+                    <h4 class="text-primary">${displayName}</h4>
+                    <span class="badge bg-info">${data.crop_display}</span>
+                </div>
+                <div class="col-md-8">
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-bug me-2 text-danger"></i>Causal Agent</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">${data.cause || 'Information not available'}</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-eye me-2 text-warning"></i>Symptoms</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">${data.symptoms || 'No symptoms described'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Images Gallery - UPDATED for BLOB storage -->
+            ${data.sample_images && data.sample_images.length > 0 ? `
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-images me-2"></i>Symptom Progression (${data.sample_images.length} images)
+                            </h6>
+                        </div>
+                        <div class="row">
+                            ${data.sample_images.map((img, index) => `
+                                <div class="col-md-3 col-6 mb-3">
+                                    <div class="card h-100">
+                                        <img src="${img.url || '{{ url_for('static', filename='img/disease-placeholder.jpg') }}'}"
+                                             class="card-img-top"
+                                             alt="Sample ${index + 1}"
+                                             style="height: 100px; object-fit: cover;"
+                                             onerror="this.src='{{ url_for('static', filename='img/disease-placeholder.jpg') }}'">
+                                        <div class="card-body p-2 text-center">
+                                            <p class="small mb-1">${img.title || `Sample ${index + 1}`}</p>
+                                            <span class="badge bg-${getSeverityColor(img.severity)}">
+                                                ${img.severity || 'Stage'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Treatment Information -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-leaf me-2"></i>Organic</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">${data.organic_treatment || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="fas fa-flask me-2"></i>Chemical</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">${data.chemical_treatment || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Prevention</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">${data.prevention || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0"><i class="fas fa-hand-paper me-2"></i>Manual</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">${data.manual_treatment || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${data.last_updated ? `
+                <div class="text-muted text-end mt-3">
+                    <small>Last updated: ${new Date(data.last_updated).toLocaleDateString()}</small>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.getElementById('diseaseInfoContent').innerHTML = content;
+    document.getElementById('diseaseInfoModalLabel').innerHTML = `<i class="fas fa-info-circle me-2"></i>${displayName} Information`;
+}
+
+// Helper function for severity colors
+function getSeverityColor(severity) {
+    const colors = {
+        'Early': 'success',
+        'Moderate': 'warning',
+        'Advanced': 'danger',
+        'Severe': 'dark'
+    };
+    return colors[severity] || 'secondary';
+}
+
+// Toggle edit mode
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    const editToggle = document.getElementById('editModeToggle');
+
+    if (isEditMode) {
+        editToggle.innerHTML = '<i class="fas fa-times me-1"></i>Exit Edit Mode';
+        editToggle.classList.remove('btn-light');
+        editToggle.classList.add('btn-danger');
+        showEditInterface();
+    } else {
+        editToggle.innerHTML = '<i class="fas fa-edit me-1"></i>Edit Mode';
+        editToggle.classList.remove('btn-danger');
+        editToggle.classList.add('btn-light');
+        displayDiseaseInfo(currentDiseaseData);
+    }
+}
+
+// Show edit interface
+function showEditInterface() {
+    const modal = new bootstrap.Modal(document.getElementById('inlineEditModal'));
+
+    // Populate edit form with current data
+    document.getElementById('editDiseaseCode').value = currentDiseaseCode;
+    document.getElementById('editCrop').value = currentDiseaseCrop;
+    document.getElementById('editDiseaseCodeDisplay').value = currentDiseaseCode;
+    document.getElementById('editCropDisplay').value = currentDiseaseCrop === 'corn' ? 'Corn' : 'Rice';
+    document.getElementById('editMainImagePreview').src = currentDiseaseData.image_url || '';
+    document.getElementById('editCause').value = currentDiseaseData.cause || '';
+    document.getElementById('editSymptoms').value = currentDiseaseData.symptoms || '';
+    document.getElementById('editOrganicTreatment').value = currentDiseaseData.organic_treatment || '';
+    document.getElementById('editChemicalTreatment').value = currentDiseaseData.chemical_treatment || '';
+    document.getElementById('editPrevention').value = currentDiseaseData.prevention || '';
+    document.getElementById('editManualTreatment').value = currentDiseaseData.manual_treatment || '';
+
+    // Load sample images
+    displaySampleImagesForEdit(currentDiseaseData.sample_images || []);
+
+    modal.show();
+}
+
+// Display sample images in edit mode - UPDATED for BLOB storage
+function displaySampleImagesForEdit(samples) {
+    const container = document.getElementById('editSampleImagesContainer');
+
+    if (samples.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No sample images yet. Click "Add Sample" to add images.</p>';
+        return;
+    }
+
+    container.innerHTML = samples.map((sample, index) => {
+        // Make sure sample.id exists and is valid
+        const sampleId = sample.id || `temp-${index}`;
+        return `
+        <div class="col-md-4 col-6 mb-3" id="edit-sample-${sampleId}">
+            <div class="card">
+                <img src="${sample.url || '{{ url_for('static', filename='img/disease-placeholder.jpg') }}'}"
+                     class="card-img-top"
+                     alt="Sample ${index + 1}"
+                     style="height: 120px; object-fit: cover;">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-${getSeverityColor(sample.severity)}">${sample.severity || 'Stage'}</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-warning" onclick='editSample(${JSON.stringify(sample).replace(/'/g, "\\'")})'>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${sample.id ? `
+                                <button class="btn btn-outline-danger"
+                                        onclick="deleteSample(${sample.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                ` : ''}
+                        </div>
+                    </div>
+                    <p class="small text-truncate mt-1 mb-0">${sample.title || `Sample ${index + 1}`}</p>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+// Upload main image
+function uploadMainImage() {
+    document.getElementById('editMainImageFile').click();
+}
+
+function previewAndUploadMainImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            document.getElementById('editMainImagePreview').src = e.target.result;
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Edit sample - UPDATED for BLOB storage
+function editSample(sampleData) {
+    document.getElementById('editSampleId').value = sampleData.id || '';
+    document.getElementById('editSamplePreview').src = sampleData.url || '';
+    document.getElementById('editSampleTitle').value = sampleData.title || '';
+    document.getElementById('editSampleDescription').value = sampleData.description || '';
+    document.getElementById('editSampleSeverity').value = sampleData.severity || 'Moderate';
+
+    const modal = new bootstrap.Modal(document.getElementById('editSampleModal'));
+    modal.show();
+}
+
+// Delete sample - UPDATED for BLOB storage
+function deleteSample(sampleId) {
+    if (!sampleId || sampleId === 'undefined') {
+        console.error("Invalid sample ID:", sampleId);
+        alert("Invalid sample ID. Cannot delete.");
+        return;
+    }
+
+    if (confirm('Are you sure you want to delete this sample image?')) {
+        fetch(`/api/disease-sample/${sampleId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const element = document.getElementById(`edit-sample-${sampleId}`);
+                if (element) element.remove();
+
+                alert('Sample deleted successfully');
+                refreshDiseaseData();
+            } else {
+                alert('Error deleting sample: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting sample');
+        });
+    }
+}
+
+// Show add sample modal in inline edit - UPDATED for BLOB storage
+function showAddSampleModalInline() {
+    document.getElementById('inlineSampleDiseaseCode').value = currentDiseaseCode;
+    document.getElementById('inlineSampleCrop').value = currentDiseaseCrop;
+    document.getElementById('inlineSampleImageFile').value = '';
+    document.getElementById('inlineSampleTitle').value = '';
+    document.getElementById('inlineSampleDescription').value = '';
+    document.getElementById('inlineSampleSeverity').value = 'Moderate';
+    document.getElementById('inlineSampleImagePreviewContainer').style.display = 'none';
+
+    // Add preview listener
+    document.getElementById('inlineSampleImageFile').onchange = function() {
+        previewInlineSampleImage(this);
+    };
+
+    const modal = new bootstrap.Modal(document.getElementById('inlineSampleModal'));
+    modal.show();
+}
+
+function previewInlineSampleImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            document.getElementById('inlineSampleImagePreview').src = e.target.result;
+            document.getElementById('inlineSampleImagePreviewContainer').style.display = 'block';
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Save inline sample - UPDATED for BLOB storage
+function saveInlineSample() {
+    const diseaseCode = document.getElementById('inlineSampleDiseaseCode').value;
+    const crop = document.getElementById('inlineSampleCrop').value;
+    const imageFile = document.getElementById('inlineSampleImageFile').files[0];
+    const title = document.getElementById('inlineSampleTitle').value;
+    const description = document.getElementById('inlineSampleDescription').value;
+    const severity = document.getElementById('inlineSampleSeverity').value;
+
+    if (!imageFile) {
+        alert('Please select an image file');
+        return;
+    }
+
+    // Show loading state
+    const saveBtn = document.querySelector('#inlineSampleModal .btn-success');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    saveBtn.disabled = true;
+
+    // Upload the image file first
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('disease_code', diseaseCode);
+    formData.append('crop', crop);
+    formData.append('image_title', title);
+    formData.append('image_description', description);
+    formData.append('severity_level', severity);
+
+    fetch('/api/upload-disease-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Sample added successfully with BLOB storage
+            bootstrap.Modal.getInstance(document.getElementById('inlineSampleModal')).hide();
+            alert('Sample added successfully');
+            // Refresh the disease data
+            refreshDiseaseData();
+        } else {
+            throw new Error(data.message || 'Error uploading image');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+// Save all inline edits - UPDATED for BLOB storage
+function saveInlineEdits() {
+    const formData = {
+        disease_code: currentDiseaseCode,
+        crop: currentDiseaseCrop,
+        cause: document.getElementById('editCause').value,
+        symptoms: document.getElementById('editSymptoms').value,
+        organic_treatment: document.getElementById('editOrganicTreatment').value,
+        chemical_treatment: document.getElementById('editChemicalTreatment').value,
+        prevention: document.getElementById('editPrevention').value,
+        manual_treatment: document.getElementById('editManualTreatment').value
+    };
+
+    // Check if there's a new main image
+    const mainImageFile = document.getElementById('editMainImageFile').files[0];
+
+    if (mainImageFile) {
+        // Upload main image first
+        const imageFormData = new FormData();
+        imageFormData.append('image', mainImageFile);
+        imageFormData.append('disease_code', currentDiseaseCode);
+        imageFormData.append('crop', currentDiseaseCrop);
+
+        fetch('/api/upload-disease-image', {
+            method: 'POST',
+            body: imageFormData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                return submitDiseaseEdits(formData);
+            } else {
+                throw new Error(data.message || 'Error uploading image');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error uploading main image: ' + error.message);
+        });
+    } else {
+        // No new main image, just submit the form
+        submitDiseaseEdits(formData);
+    }
+}
+
+function submitDiseaseEdits(formData) {
+    // Show loading state
+    const saveBtn = document.querySelector('#inlineEditModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+
+    fetch(`/api/disease/${currentDiseaseCode}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('inlineEditModal')).hide();
+            alert('Changes saved successfully');
+            // Exit edit mode and refresh data
+            isEditMode = false;
+            document.getElementById('editModeToggle').innerHTML = '<i class="fas fa-edit me-1"></i>Edit Mode';
+            document.getElementById('editModeToggle').classList.remove('btn-danger');
+            document.getElementById('editModeToggle').classList.add('btn-light');
+            refreshDiseaseData();
+        } else {
+            alert('Error saving changes: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving changes');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+// Refresh disease data after edits
+function refreshDiseaseData() {
+    fetch(`/api/disease-info?crop=${currentDiseaseCrop}&disease=${currentDiseaseCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentDiseaseData = data;
+                displayDiseaseInfo(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing data:', error);
+        });
+}
+
+// Preview edit sample image
+function previewEditSampleImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            document.getElementById('editSamplePreview').src = e.target.result;
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Upload new sample image for editing
+function uploadNewSampleImage() {
+    document.getElementById('editSampleImageFile').click();
+}
+
+// Save sample edits - UPDATED for BLOB storage
+function saveSampleEdits() {
+    const sampleId = document.getElementById('editSampleId').value;
+    const imageFile = document.getElementById('editSampleImageFile').files[0];
+    const title = document.getElementById('editSampleTitle').value;
+    const description = document.getElementById('editSampleDescription').value;
+    const severity = document.getElementById('editSampleSeverity').value;
+
+    if (imageFile) {
+        // Upload new image first
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        formData.append('disease_code', currentDiseaseCode);
+        formData.append('crop', currentDiseaseCrop);
+        formData.append('image_title', title);
+        formData.append('image_description', description);
+        formData.append('severity_level', severity);
+        formData.append('sample_id', sampleId);
+
+        fetch('/api/upload-disease-image', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editSampleModal')).hide();
+                alert('Sample updated successfully');
+                refreshDiseaseData();
+            } else {
+                throw new Error(data.message || 'Error uploading image');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error.message);
+        });
+    } else {
+        // Just update metadata
+        fetch(`/api/disease-sample/${sampleId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                image_title: title,
+                image_description: description,
+                severity_level: severity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editSampleModal')).hide();
+                alert('Sample updated successfully');
+                refreshDiseaseData();
+            } else {
+                alert('Error updating sample: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating sample');
+        });
+    }
+}
+
+// Print disease information
+function printDiseaseInfo() {
+    const printContent = document.getElementById('diseaseInfoContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Disease Information</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                body { padding: 20px; }
+                img { max-width: 300px; }
+                .card { margin-bottom: 15px; }
+                @media print {
+                    .btn { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                ${printContent}
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" onclick="window.print()">Print</button>
+                    <button class="btn btn-secondary" onclick="window.close()">Close</button>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+}
+
+// Image preview functions for add disease form
+function previewSelectedImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            document.getElementById('newImagePreview').src = e.target.result;
+            document.getElementById('newImagePreviewContainer').style.display = 'block';
+
+            // Hide current image container if visible
+            document.getElementById('currentImageContainer').style.display = 'none';
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function clearFileSelection() {
+    document.getElementById('imageFile').value = '';
+    document.getElementById('newImagePreviewContainer').style.display = 'none';
+
+    // Show current image again if it exists
+    const currentImg = document.getElementById('currentImagePreview');
+    if (currentImg.src && currentImg.src !== window.location.href) {
+        document.getElementById('currentImageContainer').style.display = 'flex';
+    }
+}
+
+function clearCurrentImage() {
+    document.getElementById('currentImageContainer').style.display = 'none';
+}
+
+// CRUD Operations for adding new disease
+function showAddDiseaseForm() {
+    document.getElementById('diseaseFormModalLabel').innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add New Disease';
+    document.getElementById('diseaseForm').reset();
+    document.getElementById('diseaseId').value = '';
+    document.getElementById('originalDiseaseCode').value = '';
+    document.getElementById('originalCrop').value = '';
+    document.getElementById('currentImageContainer').style.display = 'none';
+    document.getElementById('newImagePreviewContainer').style.display = 'none';
+    document.getElementById('imageFile').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('diseaseFormModal'));
+    modal.show();
+}
+
+function saveDisease() {
+    // Validate form
+    const form = document.getElementById('diseaseForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Check if there's a file to upload first
+    const imageFile = document.getElementById('imageFile').files[0];
+
+    if (imageFile) {
+        // Upload image first, then save disease
+        uploadImageAndSaveDisease(imageFile);
+    } else {
+        // No image, just save disease
+        submitDiseaseForm();
+    }
+}
+
+function uploadImageAndSaveDisease(imageFile) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('disease_code', document.getElementById('diseaseCode').value || 'new');
+    formData.append('crop', document.getElementById('cropType').value);
+    formData.append('image_title', 'Main disease image');
+    formData.append('image_description', 'Main sample image for disease identification');
+    formData.append('severity_level', 'Moderate');
+
+    // Show loading state
+    const saveBtn = document.querySelector('#diseaseFormModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    saveBtn.disabled = true;
+
+    fetch('/api/upload-disease-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Now save the disease
+            submitDiseaseForm();
+        } else {
+            alert('Error uploading image: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error uploading image');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+function submitDiseaseForm() {
+    // Collect ALL form data
+    const formData = {
+        disease_code: document.getElementById('diseaseCode').value,
+        crop: document.getElementById('cropType').value,
+        cause: document.getElementById('cause').value,
+        symptoms: document.getElementById('symptoms').value,
+        organic_treatment: document.getElementById('organicTreatment').value,
+        chemical_treatment: document.getElementById('chemicalTreatment').value,
+        prevention: document.getElementById('prevention').value,
+        manual_treatment: document.getElementById('manualTreatment').value
+    };
+
+    // Determine if creating or updating
+    const isEdit = document.getElementById('diseaseId').value;
+    const method = isEdit ? 'PUT' : 'POST';
+    const url = isEdit ? `/api/disease/${formData.disease_code}` : '/api/disease';
+
+    // Show loading state
+    const saveBtn = document.querySelector('#diseaseFormModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+
+    // Send request
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('diseaseFormModal')).hide();
+
+            // Show success message
+            alert(isEdit ? 'Disease updated successfully' : 'Disease added successfully');
+
+            // Reload page to show updated data
+            window.location.reload();
+        } else {
+            alert('Error saving disease: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving disease');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+function deleteDisease(diseaseCode, crop) {
+    deleteDiseaseCode = diseaseCode;
+    deleteCrop = crop;
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+}
+
+// Confirm delete button handler
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (deleteDiseaseCode && deleteCrop) {
+        fetch(`/api/disease/${deleteDiseaseCode}?crop=${deleteCrop}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+
+                // Remove disease card from DOM or reload
+                const diseaseElement = document.getElementById(`disease-${deleteDiseaseCode}`);
+                if (diseaseElement) {
+                    diseaseElement.remove();
+                }
+
+                // Check if no diseases left
+                const diseasesContainer = document.getElementById('diseasesContainer');
+                if (diseasesContainer && diseasesContainer.children.length === 0) {
+                    window.location.reload(); // Reload to show empty state
+                }
+
+                alert(data.message || 'Disease deleted successfully');
+            } else {
+                alert('Error deleting disease: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting disease');
+        })
+        .finally(() => {
+            deleteDiseaseCode = null;
+            deleteCrop = null;
+        });
+    }
+});
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+// Add some CSS for better UX
+const style = document.createElement('style');
+style.textContent = `
+    .disease-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        border-radius: 10px;
+    }
+
+    .disease-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+    }
+
+    .clickable-badge {
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .clickable-badge:hover {
+        opacity: 0.8;
+    }
+
+    .modal-xl {
+        max-width: 1200px;
+    }
+
+    .modal-lg {
+        max-width: 900px;
+    }
+
+    .card-header {
+        font-weight: 600;
+        border-bottom: 2px solid rgba(0,0,0,0.05);
+    }
+
+    #currentImageContainer, #newImagePreviewContainer, #sampleImagePreviewContainer,
+    #inlineSampleImagePreviewContainer {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .img-thumbnail {
+        border: 2px solid #dee2e6;
+        transition: border-color 0.2s;
+        border-radius: 8px;
+    }
+
+    .img-thumbnail:hover {
+        border-color: #0d6efd;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.5em 0.8em;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

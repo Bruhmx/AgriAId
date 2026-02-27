@@ -1,0 +1,33 @@
+<!-- templates/test_model.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Crop Model</title>
+</head>
+<body>
+    <h1>Test Crop Prediction Model</h1>
+    <form id="testForm" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Test</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+    document.getElementById('testForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const response = await fetch('/test_crop_model', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        document.getElementById('result').innerHTML = `
+            <h3>Result:</h3>
+            <pre>${JSON.stringify(result, null, 2)}</pre>
+        `;
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1825 @@
+{% extends "base.html" %}
+
+{% block title %}AI Diagnosis Results - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- AI Diagnosis Header
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center py-4">
+                    <h2><i class="fas fa-microchip me-3"></i>AI-Powered Diagnosis Complete</h2>
+                    <p class="lead mb-0">Analysis based on machine learning model trained on thousands of plant images</p>
+                </div>
+            </div>
+        </div>
+    </div>  -->
+
+    <div class="row">
+        <!-- Main Diagnosis Column (Left - 60%) -->
+        <div class="col-lg-7">
+            <!-- Primary Diagnosis Card -->
+            <div class="card mb-4 border-success diagnosis-card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>Primary Detection</h4>
+                    <a href="{{ url_for('my_diagnoses') }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-history me-1"></i>View History
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="position-relative">
+                                <img src="{{ url_for('diagnosis_image', diagnosis_id=diagnosis_id) }}"
+                                     class="img-fluid rounded shadow diagnosis-image"
+                                     alt="Uploaded leaf"
+                                     id="mainDiagnosisImage">
+                                <span class="position-absolute top-0 start-0 badge bg-primary m-2 crop-badge">
+                                    <i class="fas fa-leaf me-1"></i>{{ diagnosis.crop_display }}
+                                </span>
+                                <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 zoom-btn"
+                                        onclick="zoomImage()" title="Zoom image">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <h3 class="text-success diagnosis-title">{{ diagnosis.primary.name }}</h3>
+
+                            <!-- AI Verified Badge - No percentage shown -->
+                            <div class="confidence-indicator mt-2">
+                                <span class="badge bg-success bg-opacity-25 text-success px-3 py-2">
+                                    <i class="fas fa-shield-alt me-1"></i>AI Verified
+                                </span>
+                            </div>
+
+                            <!-- Diagnosis ID (hidden) -->
+                            <input type="hidden" id="diagnosisId" value="{{ diagnosis_id|default(0) }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disease Information Tabs -->
+            <div class="card mb-4 info-card">
+                <div class="card-header bg-light">
+                    <ul class="nav nav-tabs card-header-tabs" id="diseaseTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="symptoms-tab" data-bs-toggle="tab"
+                                    data-bs-target="#symptoms" type="button" role="tab">
+                                <i class="fas fa-notes-medical me-2"></i>Symptoms
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="treatment-tab" data-bs-toggle="tab"
+                                    data-bs-target="#treatment" type="button" role="tab">
+                                <i class="fas fa-pills me-2"></i>Treatment
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="prevention-tab" data-bs-toggle="tab"
+                                    data-bs-target="#prevention" type="button" role="tab">
+                                <i class="fas fa-shield-alt me-2"></i>Prevention
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="cause-tab" data-bs-toggle="tab"
+                                    data-bs-target="#cause" type="button" role="tab">
+                                <i class="fas fa-search me-2"></i>Cause
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="symptoms" role="tabpanel">
+                            <p class="info-text">{{ diagnosis.primary.symptoms }}</p>
+                            {% if diagnosis.primary.sample_images %}
+                            <h6 class="mt-3 text-primary"><i class="fas fa-images me-2"></i>Reference Images:</h6>
+                            <div class="row">
+                                {% for img in diagnosis.primary.sample_images %}
+                                <div class="col-md-4 mb-2">
+                                    <img src="{{ img.url }}" class="img-fluid rounded symptom-img"
+                                         alt="{{ img.title }}" onclick="zoomSampleImage(this.src)">
+                                    <small class="d-block text-muted">{{ img.title }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="tab-pane fade" id="treatment" role="tabpanel">
+                            <div class="treatment-section">
+                                <h6 class="treatment-heading"><i class="fas fa-hand-sparkles me-2 text-success"></i>Manual Treatment:</h6>
+                                <p class="info-text">{{ diagnosis.primary.manual_treatment }}</p>
+
+                                <h6 class="treatment-heading"><i class="fas fa-seedling me-2 text-success"></i>Organic Treatment:</h6>
+                                <p class="info-text">{{ diagnosis.primary.organic_treatment }}</p>
+
+                                <h6 class="treatment-heading"><i class="fas fa-flask me-2 text-warning"></i>Chemical Treatment:</h6>
+                                <p class="info-text">{{ diagnosis.primary.chemical_treatment }}</p>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="prevention" role="tabpanel">
+                            <p class="info-text">{{ diagnosis.primary.prevention }}</p>
+                        </div>
+                        <div class="tab-pane fade" id="cause" role="tabpanel">
+                            <p class="info-text">{{ diagnosis.primary.cause }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alternative Diagnoses -->
+            {% if diagnosis.alternatives %}
+            <div class="card mb-4 alternative-card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-list me-2 text-warning"></i>Other Possible Conditions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for alt in diagnosis.alternatives %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-warning alternative-item">
+                                <div class="card-body">
+                                    <h6 class="alternative-title">
+                                        <i class="fas fa-leaf me-2 text-warning opacity-75"></i>{{ alt.name }}
+                                    </h6>
+                                    <span class="badge bg-warning bg-opacity-25 text-warning mt-2">Consider checking</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Training Consent Checkbox -->
+            <div class="card mb-4 consent-card">
+                <div class="card-body">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="trainingConsent" checked>
+                        <label class="form-check-label" for="trainingConsent">
+                            <i class="fas fa-brain text-primary me-2"></i>
+                            <strong>Allow my image and answers to be used for improving AI accuracy</strong>
+                        </label>
+                        <small class="d-block text-muted mt-1 ms-4">
+                            <i class="fas fa-lock me-1"></i>Your data helps train better models to help other farmers. All data is anonymized.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Integrated Expert Questions Panel (40%) -->
+        <div class="col-lg-5">
+            <div class="card sticky-top questions-card" style="top: 20px; z-index: 100;">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Expert Validation Questions</h5>
+                    <span class="badge bg-light text-primary" id="questionCounter">Loading...</span>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Panel Tabs -->
+                    <ul class="nav nav-tabs question-tabs" id="questionTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="questions-tab" data-bs-toggle="tab"
+                                    data-bs-target="#questions-panel" type="button" role="tab">
+                                <i class="fas fa-clipboard-list me-2"></i><span style="color: green;">Questions</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="insights-tab" data-bs-toggle="tab"
+                                    data-bs-target="#insights-panel" type="button" role="tab">
+                                <i class="fas fa-lightbulb me-2"></i> <span style="color: green;">Insights</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="summary-tab" data-bs-toggle="tab"
+                                    data-bs-target="#summary-panel" type="button" role="tab">
+                                <i class="fas fa-chart-pie me-2"></i><span style="color: green;">Summary</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content p-3 questions-content" style="max-height: 60vh; overflow-y: auto;">
+                        <!-- Questions Panel -->
+                        <div class="tab-pane fade show active" id="questions-panel" role="tabpanel">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">Answer questions to get insights</small>
+                                    <small class="text-primary fw-bold" id="answeredCount">0 answered</small>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar bg-success" id="answerProgressBar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <div id="questionsContainer">
+                                <!-- Questions will be loaded here via JavaScript -->
+                                <div class="text-center py-5 loading-container">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                    <p class="mt-2 text-muted">Loading expert questions...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Insights Panel -->
+                        <div class="tab-pane fade" id="insights-panel" role="tabpanel">
+                            <div id="insightsContainer">
+                                <div class="text-center text-muted py-5 empty-state">
+                                    <i class="fas fa-lightbulb fa-3x mb-3 opacity-25"></i>
+                                    <p class="mb-0">Answer questions to see personalized insights here</p>
+                                    <small class="text-muted">Your insights will appear as you answer questions</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Panel -->
+                        <div class="tab-pane fade" id="summary-panel" role="tabpanel">
+                            <div id="summaryContainer">
+                                <div class="text-center text-muted py-5 empty-state">
+                                    <i class="fas fa-chart-pie fa-3x mb-3 opacity-25"></i>
+                                    <p class="mb-0">Answer questions to see your answer summary</p>
+                                    <small class="text-muted">Track your responses here</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="card-footer bg-light">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary generate-btn" id="generateInsightsBtn" onclick="generateInsights()">
+                            <i class="fas fa-lightbulb me-2"></i>Generate Insights
+                        </button>
+                        <button class="btn btn-outline-secondary save-btn" onclick="saveAndPrint()">
+                            <i class="fas fa-save me-2"></i>Save & Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Zoom Modal -->
+<div class="modal fade" id="imageZoomModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Image View</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" class="img-fluid" id="zoomedImage" alt="Zoomed image">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast Notification -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <small>just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            Your answers have been saved successfully!
+        </div>
+    </div>
+</div>
+
+<style>
+/* ========== GLOBAL STYLES ========== */
+:root {
+    --primary-color: #0d6efd;
+
+    --success-color: #198754;
+    --success-dark: #146c43;
+    --danger-color: #dc3545;
+    --danger-dark: #bb2d3b;
+    --warning-color: #ffc107;
+    --warning-dark: #e0a800;
+    --info-color: #0dcaf0;
+    --info-dark: #0baccc;
+    --light-bg: #f8f9fa;
+    --dark-text: #212529;
+    --border-color: #dee2e6;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 24px;
+    --border-radius-pill: 50px;
+}
+
+/* ========== TYPOGRAPHY ========== */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--dark-text);
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* ========== HEADER CARD ========== */
+.card.bg-success.text-white {
+    background: linear-gradient(135deg, var(--success-color), var(--success-dark)) !important;
+    border: none !important;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 2rem;
+}
+
+.card.bg-success.text-white .card-body {
+    padding: 2.5rem !important;
+}
+
+.card.bg-success.text-white h2 {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.card.bg-success.text-white .lead {
+    font-size: 1.25rem;
+    opacity: 0.95;
+}
+
+/* ========== PRIMARY DIAGNOSIS CARD ========== */
+.diagnosis-card {
+    border: none !important;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: var(--transition-normal);
+}
+
+.diagnosis-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.diagnosis-card .card-header {
+    background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+    border: none;
+    padding: 1.2rem 1.5rem;
+}
+
+.diagnosis-card .card-header h4 {
+    font-size: 1.3rem;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.diagnosis-card .card-body {
+    padding: 1.8rem;
+}
+
+.diagnosis-image {
+    max-height: 280px;
+    width: 100%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-normal);
+}
+
+.diagnosis-image:hover {
+    transform: scale(1.03);
+}
+
+.crop-badge {
+    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+    background: rgba(33, 37, 41, 0.85) !important;
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: var(--border-radius-pill);
+    box-shadow: var(--shadow-sm);
+}
+
+.zoom-btn {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+
+.zoom-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+.diagnosis-title {
+    font-weight: 700;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--success-color) !important;
+}
+
+.confidence-indicator {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== DISEASE INFO TABS ========== */
+.info-card {
+    border: none;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    background: white;
+}
+
+.info-card .card-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-bottom: 3px solid var(--primary-color);
+    padding: 1.2rem 1.2rem 0 1.2rem;
+}
+
+.info-card .nav-tabs {
+    border-bottom: none;
+    gap: 0.5rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.info-card .nav-item {
+    margin-bottom: 0;
+    flex: 1 1 auto;
+}
+
+.info-card .nav-link:not(.active) {
+    border: 3px solid var(--primary-color) !important;
+    border-radius: var(--border-radius-pill) var(--border-radius-pill) 0 0 !important;
+    padding: 1rem 1.8rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--primary-color) !important;
+    background: linear-gradient(135deg, white, #f8f9fa) !important;
+    transition: var(--transition-normal);
+    box-shadow: var(--shadow-sm);
+    width: 100%;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-card .nav-link:not(.active) i {
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+}
+
+#symptoms-tab.nav-link:not(.active) {
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
+#treatment-tab.nav-link:not(.active) {
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+#prevention-tab.nav-link:not(.active) {
+    border-color: var(--warning-color) !important;
+    color: #856404 !important;
+}
+
+#cause-tab.nav-link:not(.active) {
+    border-color: var(--danger-color) !important;
+    color: var(--danger-color) !important;
+}
+
+.info-card .nav-link:not(.active):hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.info-card .nav-link.active {
+    border: 4px solid !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    font-weight: 800;
+    color: white !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#symptoms-tab.nav-link.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+#treatment-tab.nav-link.active {
+    background: linear-gradient(135deg, var(--success-color), var(--success-dark)) !important;
+    border-color: var(--success-dark) !important;
+}
+
+#prevention-tab.nav-link.active {
+    background: linear-gradient(135deg, var(--warning-color), var(--warning-dark)) !important;
+    border-color: var(--warning-dark) !important;
+    color: #212529 !important;
+}
+
+#cause-tab.nav-link.active {
+    background: linear-gradient(135deg, var(--danger-color), var(--danger-dark)) !important;
+    border-color: var(--danger-dark) !important;
+}
+
+.info-card .tab-content {
+    padding: 2rem;
+    background: white;
+    border: 3px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.info-text {
+    line-height: 1.7;
+    color: var(--dark-text);
+}
+
+/* ===== TREATMENT SECTIONS - SIDE BY SIDE ===== */
+.treatment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.treatment-card {
+    background: #f8f9fa;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+    transition: var(--transition-normal);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.treatment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--success-color);
+}
+
+.treatment-card.manual {
+    border-top: 4px solid #3498db;
+}
+
+.treatment-card.organic {
+    border-top: 4px solid #27ae60;
+}
+
+.treatment-card.chemical {
+    border-top: 4px solid #e67e22;
+}
+
+.treatment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.treatment-header i {
+    font-size: 1.5rem;
+    width: 2rem;
+    text-align: center;
+}
+
+.treatment-header.manual i { color: #3498db; }
+.treatment-header.organic i { color: #27ae60; }
+.treatment-header.chemical i { color: #e67e22; }
+
+.treatment-header h6 {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 0;
+    color: var(--dark-text);
+}
+
+.treatment-content {
+    flex: 1;
+    color: var(--medium-text);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.treatment-content p {
+    margin-bottom: 0;
+}
+
+/* Two-column layout for cause and prevention */
+.info-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.info-block {
+    background: #f8f9fa;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+    transition: var(--transition-normal);
+    height: 100%;
+}
+
+.info-block:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.info-block.cause {
+    border-left: 4px solid var(--danger-color);
+}
+
+.info-block.prevention {
+    border-left: 4px solid var(--warning-color);
+}
+
+.info-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.info-header i {
+    font-size: 1.5rem;
+    width: 2rem;
+    text-align: center;
+}
+
+.info-header.cause i { color: var(--danger-color); }
+.info-header.prevention i { color: #e67e22; }
+
+.info-header h6 {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 0;
+    color: var(--dark-text);
+}
+
+.info-content {
+    color: var(--medium-text);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Symptoms section with reference images */
+.symptoms-section {
+    margin-bottom: 2rem;
+}
+
+.symptoms-text {
+    background: #f8f9fa;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+    margin-bottom: 2rem;
+}
+
+.reference-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.reference-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.5rem;
+}
+
+.symptom-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: var(--transition-normal);
+    border: 3px solid var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+.symptom-img:hover {
+    transform: scale(1.05) translateY(-5px);
+    border-color: var(--warning-color);
+    box-shadow: 0 12px 28px rgba(255, 193, 7, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .treatment-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .info-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .treatment-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .reference-images-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .treatment-card {
+        padding: 1rem;
+    }
+
+    .info-block {
+        padding: 1rem;
+    }
+
+    .reference-images-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .symptom-img {
+        height: 200px;
+    }
+}
+/* ========== ALTERNATIVE DIAGNOSES ========== */
+.alternative-card {
+    border: none;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+}
+
+.alternative-item {
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    transition: var(--transition-normal);
+    background: #fffaf0;
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+.alternative-item:hover {
+    border-color: #ffc107;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.alternative-title {
+    color: #856404;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* ========== CONSENT CARD ========== */
+.consent-card {
+    border: none;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-lg);
+}
+
+/* ========== QUESTION TABS ========== */
+.questions-card {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.question-tabs {
+    padding: 0 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    gap: 0.5rem;
+}
+
+.question-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: var(--transition-fast);
+}
+
+.question-tabs .nav-link:hover {
+    color: var(--primary-color);
+    background: transparent;
+    border: none;
+}
+
+.question-tabs .nav-link.active {
+    color: var(--primary-color);
+    background: transparent;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.question-tabs .nav-link i {
+    margin-right: 0.5rem;
+}
+
+.questions-content {
+    background: white;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Question Cards */
+.question-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius-md);
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-normal);
+    animation: slideIn 0.3s ease-out;
+}
+
+.question-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+    transform: translateX(5px);
+}
+
+.question-card.answered-yes {
+    border-left: 6px solid var(--success-color);
+    background: linear-gradient(135deg, #f0fff4, white);
+}
+
+.question-card.answered-no {
+    border-left: 6px solid var(--danger-color);
+    background: linear-gradient(135deg, #fff0f0, white);
+}
+
+.question-card.answered-unknown {
+    border-left: 6px solid var(--secondary-color);
+    background: linear-gradient(135deg, #f8f9fa, white);
+}
+
+.question-card h6 {
+    color: var(--dark-text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+/* Category Badges */
+.category-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--border-radius-pill);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
+    display: inline-block;
+}
+
+.category-badge.symptom { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; }
+.category-badge.environment { background: linear-gradient(135deg, var(--success-color), var(--success-dark)); color: white; }
+.category-badge.field { background: linear-gradient(135deg, var(--warning-color), var(--warning-dark)); color: #212529; }
+.category-badge.severity { background: linear-gradient(135deg, var(--danger-color), var(--danger-dark)); color: white; }
+.category-badge.management { background: linear-gradient(135deg, var(--secondary-color), #565e64); color: white; }
+.category-badge.growth { background: linear-gradient(135deg, #20c997, #1ba87e); color: white; }
+.category-badge.general { background: linear-gradient(135deg, #6f42c1, #5936a2); color: white; }
+
+/* Answer Buttons */
+.btn-group {
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.btn-group .btn-outline-success,
+.btn-group .btn-outline-danger,
+.btn-group .btn-outline-secondary {
+    border: 2px solid !important;
+    font-weight: 600;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--border-radius-pill);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-normal);
+    font-size: 0.85rem;
+}
+
+.btn-group .btn-outline-success {
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+.btn-group .btn-outline-danger {
+    border-color: var(--danger-color) !important;
+    color: var(--danger-color) !important;
+}
+
+.btn-group .btn-outline-secondary {
+    border-color: var(--secondary-color) !important;
+    color: var(--secondary-color) !important;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-check:checked + .btn-outline-success {
+    background: var(--success-color) !important;
+    color: white !important;
+    border-width: 3px !important;
+}
+
+.btn-check:checked + .btn-outline-danger {
+    background: var(--danger-color) !important;
+    color: white !important;
+    border-width: 3px !important;
+}
+
+.btn-check:checked + .btn-outline-secondary {
+    background: var(--secondary-color) !important;
+    color: white !important;
+    border-width: 3px !important;
+}
+
+/* Progress */
+.progress {
+    background-color: #e9ecef;
+    border-radius: var(--border-radius-pill);
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--success-color), #20c997);
+    transition: width 0.6s ease;
+}
+
+/* Counter Badge */
+#questionCounter {
+    background: rgba(255,255,255,0.2) !important;
+    color: white !important;
+    border: 2px solid white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--border-radius-pill);
+}
+
+/* Action Buttons */
+.generate-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    padding: 0.8rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-pill);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-normal);
+}
+
+.generate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.save-btn {
+    border: 2px solid var(--secondary-color);
+    color: var(--secondary-color);
+    font-weight: 600;
+    padding: 0.8rem;
+    border-radius: var(--border-radius-pill);
+    background: white;
+    transition: var(--transition-normal);
+}
+
+.save-btn:hover {
+    background: var(--secondary-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ========== INSIGHTS PANEL ========== */
+.insight-item {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-normal);
+    animation: slideIn 0.3s ease-out;
+}
+
+.insight-item:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow-md);
+}
+
+.insight-item.match {
+    border-left: 6px solid var(--success-color);
+    background: linear-gradient(135deg, #f0fff4, white);
+}
+
+.insight-item.note {
+    border-left: 6px solid var(--warning-color);
+    background: linear-gradient(135deg, #fff9e6, white);
+}
+
+.insight-item.info {
+    border-left: 6px solid var(--primary-color);
+    background: linear-gradient(135deg, #e7f1ff, white);
+}
+
+.insight-item.insight {
+    border-left: 6px solid var(--info-color);
+    background: linear-gradient(135deg, #e6faff, white);
+}
+
+/* ========== SUMMARY PANEL ========== */
+.summary-stats {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.assessment-card {
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.assessment-badge {
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--border-radius-pill);
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-box {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: var(--border-radius-md);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+
+.stat-box:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* ========== EMPTY STATES ========== */
+.empty-state {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 3px dashed var(--primary-color);
+    border-radius: var(--border-radius-xl);
+    padding: 3rem 2rem !important;
+    margin: 1rem;
+}
+
+.empty-state i {
+    color: var(--primary-color);
+    opacity: 0.5;
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state small {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+}
+
+/* ========== LOADING STATE ========== */
+.loading-container {
+    background: #f8f9fa;
+    border-radius: var(--border-radius-lg);
+    padding: 3rem !important;
+}
+
+.spinner-border.text-primary {
+    color: var(--primary-color) !important;
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+}
+
+/* ========== CUSTOM SCROLLBAR ========== */
+.questions-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.questions-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.questions-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.questions-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.tab-pane,
+.question-card,
+.insight-item {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Stagger animations */
+.question-card:nth-child(1) { animation-delay: 0.1s; }
+.question-card:nth-child(2) { animation-delay: 0.2s; }
+.question-card:nth-child(3) { animation-delay: 0.3s; }
+.question-card:nth-child(4) { animation-delay: 0.4s; }
+.question-card:nth-child(5) { animation-delay: 0.5s; }
+.question-card:nth-child(6) { animation-delay: 0.6s; }
+.question-card:nth-child(7) { animation-delay: 0.7s; }
+.question-card:nth-child(8) { animation-delay: 0.8s; }
+
+/* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 992px) {
+    .card.bg-success.text-white h2 {
+        font-size: 1.8rem;
+    }
+
+    .diagnosis-title {
+        font-size: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .questions-card {
+        margin-top: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .info-card .nav-tabs,
+    .question-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        padding-bottom: 0.5rem;
+    }
+
+    .info-card .nav-tabs::-webkit-scrollbar,
+    .question-tabs::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .info-card .nav-tabs::-webkit-scrollbar-thumb,
+    .question-tabs::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 4px;
+    }
+
+    .info-card .nav-item,
+    .question-tabs .nav-item {
+        flex: 0 0 auto;
+    }
+
+    .info-card .nav-link:not(.active),
+    .question-tabs .nav-link:not(.active) {
+        white-space: nowrap;
+        padding: 0.7rem 1.2rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 0.3rem;
+    }
+
+    .symptom-img {
+        height: 120px;
+    }
+}
+
+@media (max-width: 576px) {
+    .card.bg-success.text-white .card-body {
+        padding: 1.5rem !important;
+    }
+
+    .card.bg-success.text-white h2 {
+        font-size: 1.5rem;
+    }
+
+    .diagnosis-title {
+        font-size: 1.3rem;
+    }
+
+    .symptom-img {
+        height: 180px;
+    }
+
+    .info-text {
+        font-size: 0.95rem;
+    }
+
+    .category-badge {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.6rem !important;
+    }
+
+    .btn-group .btn-outline-success,
+    .btn-group .btn-outline-danger,
+    .btn-group .btn-outline-secondary {
+        font-size: 0.8rem;
+        padding: 0.5rem !important;
+    }
+}
+
+/* ========== PRINT STYLES ========== */
+@media print {
+    .sticky-top {
+        position: static;
+    }
+
+    .btn,
+    .zoom-btn,
+    .generate-btn,
+    .save-btn,
+    .question-tabs {
+        display: none !important;
+    }
+
+    .info-card .nav-tabs {
+        display: none;
+    }
+
+    .info-card .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        margin-bottom: 2rem;
+        page-break-inside: avoid;
+        border: 1px solid #000;
+        padding: 1rem;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+}
+
+/* Toast notification */
+.toast-container {
+    z-index: 9999;
+}
+</style>
+
+<script>
+// ========== GLOBAL VARIABLES ==========
+let answeredCount = 0;
+let totalQuestions = 0;
+let currentAnswers = {};
+
+// Get data from Flask template
+const diseaseCode = "{{ diagnosis.primary.code }}";
+const cropOriginal = "{{ diagnosis.crop_original }}";
+const cropDisplay = "{{ diagnosis.crop_display }}";
+const diagnosisId = {{ diagnosis_id|default(0) }};
+
+console.log('Initializing with:', { diseaseCode, cropOriginal, cropDisplay, diagnosisId });
+
+// ========== INITIALIZATION ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - starting loadQuestions');
+    loadQuestions();
+    loadSavedAnswers();
+});
+
+// ========== LOAD SAVED ANSWERS FROM SESSION STORAGE ==========
+function loadSavedAnswers() {
+    const saved = sessionStorage.getItem(`answers_${diagnosisId}`);
+    if (saved) {
+        try {
+            currentAnswers = JSON.parse(saved);
+            console.log('Loaded saved answers:', currentAnswers);
+        } catch (e) {
+            console.error('Error loading saved answers:', e);
+        }
+    }
+}
+
+// ========== SAVE ANSWERS TO SESSION STORAGE ==========
+function saveAnswersToSession() {
+    if (diagnosisId) {
+        sessionStorage.setItem(`answers_${diagnosisId}`, JSON.stringify(currentAnswers));
+    }
+}
+
+// ========== LOAD QUESTIONS FROM API ==========
+function loadQuestions() {
+    console.log('Starting loadQuestions...');
+
+    document.getElementById('questionsContainer').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading expert questions...</p>
+        </div>
+    `;
+
+    fetch(`/api/get-questions-for-disease?disease_code=${encodeURIComponent(diseaseCode)}&crop=${encodeURIComponent(cropOriginal)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('API Response:', data);
+
+            if (data.success) {
+                if (data.questions && data.questions.length > 0) {
+                    displayQuestions(data.questions);
+                    totalQuestions = data.count;
+                    document.getElementById('questionCounter').textContent = totalQuestions + ' questions';
+                } else {
+                    document.getElementById('questionsContainer').innerHTML = `
+                        <div class="alert alert-info text-center py-4">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <h6>No Questions Available</h6>
+                            <p class="small text-muted mb-0">There are no expert questions for this disease at this time.</p>
+                        </div>
+                    `;
+                    document.getElementById('questionCounter').textContent = '0 questions';
+                }
+                updateProgress();
+            } else {
+                throw new Error(data.error || 'Failed to load questions');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading questions:', error);
+            document.getElementById('questionsContainer').innerHTML = `
+                <div class="alert alert-danger text-center py-4">
+                    <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+                    <h6>Error Loading Questions</h6>
+                    <p class="small mb-2">${error.message}</p>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadQuestions()">
+                        <i class="fas fa-sync-alt me-2"></i> Try Again
+                    </button>
+                </div>
+            `;
+            document.getElementById('questionCounter').textContent = 'Error';
+        });
+}
+
+// ========== DISPLAY QUESTIONS ==========
+function displayQuestions(questions) {
+    let html = '';
+
+    questions.forEach((question, index) => {
+        const categoryClass = question.question_category || 'general';
+        const categoryDisplay = question.question_category ?
+            question.question_category.charAt(0).toUpperCase() + question.question_category.slice(1) : 'General';
+
+        html += `
+        <div class="question-card mb-3" data-question-id="${question.id}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-0">${index + 1}. ${question.question_text}</h6>
+                <span class="category-badge ${categoryClass}">
+                    ${categoryDisplay}
+                </span>
+            </div>
+
+            <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check"
+                       name="q_${question.id}"
+                       id="q_${question.id}_yes"
+                       value="yes" autocomplete="off"
+                       ${currentAnswers[question.id] === 'yes' ? 'checked' : ''}>
+                <label class="btn btn-outline-success btn-sm" for="q_${question.id}_yes">
+                    <i class="fas fa-check me-1"></i>Yes
+                </label>
+
+                <input type="radio" class="btn-check"
+                       name="q_${question.id}"
+                       id="q_${question.id}_no"
+                       value="no" autocomplete="off"
+                       ${currentAnswers[question.id] === 'no' ? 'checked' : ''}>
+                <label class="btn btn-outline-danger btn-sm" for="q_${question.id}_no">
+                    <i class="fas fa-times me-1"></i>No
+                </label>
+
+                <input type="radio" class="btn-check"
+                       name="q_${question.id}"
+                       id="q_${question.id}_unknown"
+                       value="unknown" autocomplete="off"
+                       ${!currentAnswers[question.id] || currentAnswers[question.id] === 'unknown' ? 'checked' : ''}>
+                <label class="btn btn-outline-secondary btn-sm" for="q_${question.id}_unknown">
+                    <i class="fas fa-question me-1"></i>Unsure
+                </label>
+            </div>
+        </div>
+        `;
+    });
+
+    document.getElementById('questionsContainer').innerHTML = html;
+
+    // Add event listeners to radio buttons
+    document.querySelectorAll('.btn-check').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            handleAnswer(this);
+        });
+    });
+
+    // Restore previous answers
+    Object.keys(currentAnswers).forEach(qId => {
+        const answer = currentAnswers[qId];
+        const radio = document.querySelector(`input[name="q_${qId}"][value="${answer}"]`);
+        if (radio) {
+            radio.checked = true;
+            updateQuestionStatus(radio);
+        }
+    });
+}
+
+// ========== HANDLE ANSWER SELECTION ==========
+function handleAnswer(radio) {
+    const questionCard = radio.closest('.question-card');
+    if (!questionCard) return;
+
+    const questionId = questionCard.dataset.questionId;
+    const answer = radio.value;
+
+    currentAnswers[questionId] = answer;
+    console.log('Answer saved:', { questionId, answer });
+
+    saveAnswersToSession();
+    updateQuestionStatus(radio);
+    updateAnsweredCount();
+}
+
+// ========== UPDATE QUESTION VISUAL STATUS ==========
+function updateQuestionStatus(radio) {
+    const questionCard = radio.closest('.question-card');
+    if (!questionCard) return;
+
+    const answer = radio.value;
+
+    questionCard.classList.remove('answered-yes', 'answered-no', 'answered-unknown');
+
+    if (answer === 'yes') {
+        questionCard.classList.add('answered-yes');
+    } else if (answer === 'no') {
+        questionCard.classList.add('answered-no');
+    } else {
+        questionCard.classList.add('answered-unknown');
+    }
+}
+
+// ========== UPDATE ANSWER COUNT AND PROGRESS ==========
+function updateAnsweredCount() {
+    answeredCount = Object.keys(currentAnswers).length;
+    document.getElementById('answeredCount').textContent = answeredCount + ' answered';
+
+    const progressPercent = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
+    document.getElementById('answerProgressBar').style.width = progressPercent + '%';
+}
+
+function updateProgress() {
+    updateAnsweredCount();
+}
+
+// ========== SAVE ANSWERS TO DATABASE ==========
+async function saveAnswersToDatabase() {
+    if (!diagnosisId) {
+        console.log('No diagnosis ID available');
+        return false;
+    }
+
+    const answersData = [];
+    for (const [qId, answer] of Object.entries(currentAnswers)) {
+        const questionCard = document.querySelector(`[data-question-id="${qId}"]`);
+        const questionText = questionCard?.querySelector('h6')?.textContent?.replace(/^\d+\.\s*/, '') || '';
+        const categorySpan = questionCard?.querySelector('.category-badge');
+        const category = categorySpan?.textContent.trim().toLowerCase() || 'general';
+
+        answersData.push({
+            question_id: parseInt(qId),
+            question_text: questionText,
+            category: category,
+            answer: answer
+        });
+    }
+
+    try {
+        const response = await fetch('/save-question-answers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                diagnosis_id: diagnosisId,
+                answers: answersData,
+                for_training: document.getElementById('trainingConsent')?.checked || true
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log('Answers saved to database');
+            showToast('Answers saved successfully!');
+            return true;
+        } else {
+            console.error('Failed to save answers:', data.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error saving answers:', error);
+        return false;
+    }
+}
+
+// ========== GENERATE INSIGHTS ==========
+async function generateInsights() {
+    if (Object.keys(currentAnswers).length === 0) {
+        alert('Please answer at least one question first.');
+        return;
+    }
+
+    console.log('Generating insights with answers:', currentAnswers);
+
+    document.getElementById('insightsContainer').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted">Generating insights...</p>
+        </div>
+    `;
+
+    document.getElementById('insights-tab').click();
+
+    try {
+        const response = await fetch('/api/get-question-insights', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                answers: currentAnswers,
+                disease_code: diseaseCode,
+                crop: cropOriginal,
+                diagnosis_id: diagnosisId
+            })
+        });
+
+        const data = await response.json();
+        console.log('Insights response:', data);
+
+        if (data.success) {
+            displayInsights(data);
+            displaySummary(data);
+            await saveAnswersToDatabase();
+
+            if (diagnosisId) {
+                sessionStorage.removeItem(`answers_${diagnosisId}`);
+            }
+        } else {
+            throw new Error(data.error || 'Failed to generate insights');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('insightsContainer').innerHTML = `
+            <div class="alert alert-danger text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p class="mb-0">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ========== DISPLAY INSIGHTS ==========
+function displayInsights(data) {
+    const insightsContainer = document.getElementById('insightsContainer');
+    if (!insightsContainer) return;
+
+    let html = '<div class="insights-list">';
+
+    if (data.insights && data.insights.length > 0) {
+        data.insights.forEach(insight => {
+            const typeClass = insight.type || 'info';
+            html += `
+                <div class="insight-item ${typeClass} p-3 mb-2 rounded">
+                    ${insight.text}
+                </div>
+            `;
+        });
+    } else {
+        html += '<p class="text-muted text-center py-4">No insights available for these answers.</p>';
+    }
+
+    html += '</div>';
+    insightsContainer.innerHTML = html;
+}
+
+// ========== DISPLAY SUMMARY ==========
+function displaySummary(data) {
+    const summaryContainer = document.getElementById('summaryContainer');
+    if (!summaryContainer || !data.summary) return;
+
+    const s = data.summary;
+
+    const confidenceColors = {
+        'Very Likely': { bg: '#d4edda', text: '#155724', border: '#28a745' },
+        'Likely': { bg: '#fff3cd', text: '#856404', border: '#ffc107' },
+        'Possible': { bg: '#fff3cd', text: '#856404', border: '#fd7e14' },
+        'Unlikely': { bg: '#f8d7da', text: '#721c24', border: '#dc3545' },
+        'Very Unlikely': { bg: '#e2e3e5', text: '#383d41', border: '#6c757d' }
+    };
+
+    const colors = confidenceColors[s.confidence] || confidenceColors['Possible'];
+
+    const html = `
+        <div class="summary-stats p-4">
+            <div class="assessment-card p-4 mb-4 rounded" style="background: ${colors.bg}; border-left: 6px solid ${colors.border};">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold" style="color: ${colors.text};">Final Assessment</h5>
+                    <span class="assessment-badge px-4 py-2 rounded-pill fw-bold"
+                          style="background: ${colors.border}; color: white;">
+                        ${s.confidence}
+                    </span>
+                </div>
+                <p class="mb-3 fs-5" style="color: ${colors.text};">${s.recommendation}</p>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-4">
+                    <div class="stat-box p-3 rounded text-center">
+                        <span class="stat-value text-success">${s.yes_count}</span>
+                        <span class="stat-label">Yes</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box p-3 rounded text-center">
+                        <span class="stat-value text-danger">${s.no_count}</span>
+                        <span class="stat-label">No</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box p-3 rounded text-center">
+                        <span class="stat-value text-secondary">${s.unknown_count}</span>
+                        <span class="stat-label">Unsure</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Match Rate</span>
+                    <span>${s.yes_ratio}%</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: ${s.yes_ratio}%;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    summaryContainer.innerHTML = html;
+}
+
+// ========== SHOW TOAST NOTIFICATION ==========
+function showToast(message) {
+    const toastEl = document.getElementById('successToast');
+    const toastBody = toastEl.querySelector('.toast-body');
+    toastBody.textContent = message;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+// ========== SAVE AND PRINT ==========
+async function saveAndPrint() {
+    if (Object.keys(currentAnswers).length > 0) {
+        await saveAnswersToDatabase();
+    }
+    window.print();
+}
+
+// ========== IMAGE FUNCTIONS ==========
+function zoomImage() {
+    const img = document.getElementById('mainDiagnosisImage');
+    document.getElementById('zoomedImage').src = img.src;
+    new bootstrap.Modal(document.getElementById('imageZoomModal')).show();
+}
+
+function zoomSampleImage(src) {
+    document.getElementById('zoomedImage').src = src;
+    new bootstrap.Modal(document.getElementById('imageZoomModal')).show();
+}
+
+// Auto-save answers every 30 seconds
+setInterval(() => {
+    if (Object.keys(currentAnswers).length > 0) {
+        saveAnswersToSession();
+        console.log('Auto-saved answers to session');
+    }
+}, 30000);
+
+// Save before page unload
+window.addEventListener('beforeunload', function() {
+    if (Object.keys(currentAnswers).length > 0) {
+        saveAnswersToSession();
+    }
+});
+</script>
+{% endblock %}

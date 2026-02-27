@@ -1,0 +1,665 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Diagnoses - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-12">
+            <!-- Page Header -->
+            <div class="page-header mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-5 mb-3">
+                            <i class="fas fa-bookmark me-2 text-warning"></i>Saved Diagnoses
+                        </h1>
+                        <p class="lead text-muted">
+                            Access your bookmarked diagnoses for quick reference and comparison.
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary" onclick="clearAllSaved()">
+                            <i class="fas fa-trash-alt me-1"></i>Clear All
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="exportAllSaved()">
+                            <i class="fas fa-download me-1"></i>Export All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Total Saved</h6>
+                            <h2 class="mb-0">{{ saved_diagnoses|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Different Diseases</h6>
+                            <h2 class="mb-0">{{ unique_diseases }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Crop Types</h6>
+                            <h2 class="mb-0">{{ unique_crops }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <!-- REMOVED: Avg Confidence card -->
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchSaved" placeholder="Search saved items...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterCrop">
+                                <option value="">All Crops</option>
+                                {% for crop in crops %}
+                                <option value="{{ crop }}">{{ crop|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if saved_diagnoses %}
+            <!-- Saved Items Grid -->
+            <div class="row" id="savedItems">
+                {% for diagnosis in saved_diagnoses %}
+                <div class="col-lg-4 col-md-6 mb-4 saved-item"
+                     data-crop="{{ diagnosis.crop|lower }}"
+                     data-severity="{{ diagnosis.status }}"
+                     data-disease="{{ diagnosis.disease|lower }}">
+                    <div class="card h-100 shadow-sm">
+                        <!-- Card Header -->
+                        <div class="card-header position-relative"
+                             style="background: linear-gradient(135deg,
+                             {% if diagnosis.status == 'Severe' %}#dc3545
+                             {% elif diagnosis.status == 'Moderate' %}#ffc107
+                             {% else %}#28a745{% endif %},
+                             {% if diagnosis.status == 'Severe' %}#c82333
+                             {% elif diagnosis.status == 'Moderate' %}#e0a800
+                             {% else %}#218838{% endif %})">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="text-white">
+                                    <h6 class="mb-1">{{ diagnosis.disease }}</h6>
+                                    <small class="opacity-75">{{ diagnosis.created_at.strftime('%b %d, %Y') if diagnosis.created_at else 'Unknown date' }}</small>
+                                </div>
+                                <button class="btn btn-sm btn-light btn-save" onclick="toggleSave({{ diagnosis.id }}, this)">
+                                    <i class="fas fa-bookmark text-warning"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="card-body">
+                            <!-- Crop & Image -->
+                            <div class="row align-items-center mb-3">
+                                <div class="col-8">
+                                    <h5 class="card-title mb-1">{{ diagnosis.crop|title }}</h5>
+                                    <span class="badge bg-{{ 'success' if diagnosis.status == 'Mild' else 'warning' if diagnosis.status == 'Moderate' else 'danger' }}">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ diagnosis.status }} Severity
+                                    </span>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <img src="{{ url_for('diagnosis_image', diagnosis_id=diagnosis.id) }}"
+                                         class="rounded-circle"
+                                         width="60"
+                                         height="60"
+                                         style="object-fit: cover; cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
+                                         onclick="viewThumbnail('{{ url_for('diagnosis_image', diagnosis_id=diagnosis.id) }}', '{{ diagnosis.disease }}')"
+                                         onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 60 60\'%3E%3Crect width=\'60\' height=\'60\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'15\' y=\'35\' font-family=\'Arial\' font-size=\'10\' fill=\'%23999\'%3ENo%20Img%3C/text%3E%3C/svg%3E'">
+                                </div>
+                            </div>
+
+                            <!-- REMOVED: Confidence progress bar section -->
+
+                            <!-- AI Verified Badge -->
+                            <div class="mb-3">
+                                <span class="badge bg-success bg-opacity-75">
+                                    <i class="fas fa-shield-alt me-1"></i>AI Verified
+                                </span>
+                            </div>
+
+                            <!-- Symptoms Preview -->
+                            {% if diagnosis.symptoms %}
+                            <div class="mb-3">
+                                <small class="text-muted d-block mb-1 fw-bold">Key Symptoms:</small>
+                                <p class="small mb-0">
+                                    {{ diagnosis.symptoms.split('\n')[0][:80] }}{% if diagnosis.symptoms|length > 80 %}...{% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
+
+                            <!-- Recommendations Preview -->
+                            {% if diagnosis.recommendations %}
+                            <div class="mb-3">
+                                <small class="text-muted d-block mb-1 fw-bold">Quick Tips:</small>
+                                <p class="small mb-0">
+                                    {{ diagnosis.recommendations[:80] }}{% if diagnosis.recommendations|length > 80 %}...{% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
+
+                            <!-- Quick Actions -->
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('view_diagnosis', diagnosis_id=diagnosis.id) }}"
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </a>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-info" onclick="shareItem({{ diagnosis.id }})" title="Share">
+                                        <i class="fas fa-share-alt"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="removeSaved({{ diagnosis.id }}, this)" title="Remove">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer -->
+                        <div class="card-footer bg-transparent border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ diagnosis.created_at.strftime('%H:%M') if diagnosis.created_at else '' }}
+                                </small>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted p-0"
+                                            type="button"
+                                            data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('view_diagnosis', diagnosis_id=diagnosis.id) }}">
+                                                <i class="fas fa-eye me-2"></i>View Details
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="exportDiagnosis({{ diagnosis.id }})">
+                                                <i class="fas fa-download me-2"></i>Export
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#" onclick="removeSaved({{ diagnosis.id }}, this)">
+                                                <i class="fas fa-trash me-2"></i>Remove
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Empty State -->
+            {% else %}
+            <div class="text-center py-5 my-5">
+                <div class="mb-4">
+                    <i class="fas fa-bookmark fa-4x text-muted opacity-50"></i>
+                </div>
+                <h3 class="mb-3">No Saved Diagnoses Yet</h3>
+                <p class="text-muted mb-4">
+                    Save important diagnoses to access them quickly later.<br>
+                    Click the bookmark icon on any diagnosis to save it here.
+                </p>
+                <a href="/history" class="btn btn-primary me-2">
+                    <i class="fas fa-history me-1"></i>View History
+                </a>
+                <a href="/upload" class="btn btn-success">
+                    <i class="fas fa-camera me-1"></i>New Diagnosis
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-0">
+                <img id="modalImage" src="" class="img-fluid rounded" alt="">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: all 0.3s ease;
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+}
+
+.card-header {
+    border-bottom: none;
+    padding: 1rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* New badge style */
+.bg-opacity-75 {
+    background-color: rgba(40, 167, 69, 0.85) !important;
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btn-save {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.btn-save:hover {
+    transform: scale(1.1);
+    background: white;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+.saved-item {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu {
+    min-width: 150px;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+}
+
+.dropdown-item i {
+    width: 18px;
+    text-align: center;
+}
+
+/* Card title */
+.card-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Small text improvements */
+.small {
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Button improvements */
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-info:hover,
+.btn-outline-danger:hover {
+    color: white;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .btn-group {
+        flex-wrap: wrap;
+    }
+
+    .btn-group .btn {
+        margin-bottom: 5px;
+    }
+}
+</style>
+
+<script>
+let comparisonItems = [];
+
+// Filter functionality
+document.getElementById('searchSaved').addEventListener('input', filterItems);
+document.getElementById('filterCrop').addEventListener('change', filterItems);
+document.getElementById('filterSeverity').addEventListener('change', filterItems);
+
+function filterItems() {
+    const searchTerm = document.getElementById('searchSaved').value.toLowerCase();
+    const cropFilter = document.getElementById('filterCrop').value.toLowerCase();
+    const severityFilter = document.getElementById('filterSeverity').value;
+
+    document.querySelectorAll('.saved-item').forEach(item => {
+        const crop = item.getAttribute('data-crop');
+        const severity = item.getAttribute('data-severity');
+        const disease = item.getAttribute('data-disease');
+        const title = item.querySelector('.card-title').textContent.toLowerCase();
+
+        const matchesSearch = title.includes(searchTerm) || disease.includes(searchTerm);
+        const matchesCrop = !cropFilter || crop === cropFilter;
+        const matchesSeverity = !severityFilter || severity === severityFilter;
+
+        item.style.display = matchesSearch && matchesCrop && matchesSeverity ? '' : 'none';
+    });
+}
+
+function resetFilters() {
+    document.getElementById('searchSaved').value = '';
+    document.getElementById('filterCrop').value = '';
+    document.getElementById('filterSeverity').value = '';
+    filterItems();
+}
+
+// View thumbnail image
+function viewThumbnail(src, title) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('modalImage').alt = title;
+    new bootstrap.Modal(document.getElementById('imageModal')).show();
+}
+
+// Toggle save status
+function toggleSave(diagnosisId, button) {
+    if (confirm('Remove this diagnosis from saved items?')) {
+        fetch(`/api/diagnosis/${diagnosisId}/toggle-save`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = button.closest('.saved-item');
+                card.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    card.remove();
+                    if (document.querySelectorAll('.saved-item').length === 0) {
+                        location.reload();
+                    }
+                }, 300);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing diagnosis');
+        });
+    }
+}
+
+// Remove saved item
+function removeSaved(diagnosisId, element) {
+    if (confirm('Remove this diagnosis from saved items?')) {
+        fetch(`/api/diagnosis/${diagnosisId}/toggle-save`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = element.closest('.saved-item');
+                card.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    card.remove();
+                    if (document.querySelectorAll('.saved-item').length === 0) {
+                        location.reload();
+                    }
+                }, 300);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing diagnosis');
+        });
+    }
+}
+
+// Clear all saved
+function clearAllSaved() {
+    if (confirm('Remove all saved diagnoses? This action cannot be undone.')) {
+        fetch('/api/saved/clear-all', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error clearing saved diagnoses');
+        });
+    }
+}
+
+// Export all saved
+function exportAllSaved() {
+    fetch('/api/saved/export-all')
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `saved_diagnoses_${new Date().toISOString().split('T')[0]}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error exporting diagnoses');
+        });
+}
+
+// Export single diagnosis
+function exportDiagnosis(diagnosisId) {
+    fetch(`/api/diagnosis/${diagnosisId}/export`)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diagnosis_${diagnosisId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error exporting diagnosis');
+        });
+}
+
+// Share item
+function shareItem(diagnosisId) {
+    const url = `${window.location.origin}/diagnosis/${diagnosisId}`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'My Saved Diagnosis',
+            text: 'Check out this plant disease diagnosis I saved',
+            url: url
+        }).catch(error => {
+            console.error('Share error:', error);
+        });
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Link copied to clipboard!');
+        }).catch(error => {
+            console.error('Copy error:', error);
+            alert('Could not copy link');
+        });
+    }
+}
+
+// Comparison functionality
+function compareItem(diagnosisId) {
+    if (!comparisonItems.includes(diagnosisId)) {
+        comparisonItems.push(diagnosisId);
+
+        // Show comparison section if hidden
+        const section = document.getElementById('comparisonSection');
+        section.classList.remove('d-none');
+
+        // Load comparison data
+        loadComparison();
+
+        // Scroll to comparison section
+        section.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function loadComparison() {
+    if (comparisonItems.length === 0) return;
+
+    fetch(`/api/diagnosis/compare?ids=${comparisonItems.join(',')}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="table-responsive"><table class="table table-bordered">';
+            html += '<thead><tr><th>Feature</th>';
+
+            data.diagnoses.forEach(d => {
+                html += `<th>${d.disease_detected || d.disease}<br><small class="text-muted">${d.crop}</small></th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            // Add rows for each comparison metric
+            const metrics = [
+                { label: 'Severity', key: 'status' },
+                { label: 'Date', key: 'created_at', formatter: (d) => new Date(d.created_at).toLocaleDateString() },
+                { label: 'Symptoms', key: 'symptoms', formatter: (d) => d.symptoms ? d.symptoms.split('\n')[0].substring(0, 50) + '...' : 'None' },
+                { label: 'Treatment', key: 'recommendations', formatter: (d) => d.recommendations ? d.recommendations.substring(0, 50) + '...' : 'None' }
+            ];
+
+            metrics.forEach(metric => {
+                html += `<tr><td><strong>${metric.label}</strong></td>`;
+                data.diagnoses.forEach(d => {
+                    let value = d[metric.key];
+                    if (metric.formatter) {
+                        value = metric.formatter(d);
+                    }
+                    html += `<td>${value || 'N/A'}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+
+            // Add action buttons
+            html += `
+                <div class="d-flex justify-content-between mt-3">
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="compareInDetail()">
+                            <i class="fas fa-chart-bar me-1"></i>Detailed Comparison
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportComparison()">
+                            <i class="fas fa-download me-1"></i>Export Comparison
+                        </button>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearComparison()">
+                        <i class="fas fa-times me-1"></i>Clear Comparison
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('comparisonContent').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading comparison:', error);
+            document.getElementById('comparisonContent').innerHTML = '<p class="text-danger">Error loading comparison data</p>';
+        });
+}
+
+function clearComparison() {
+    comparisonItems = [];
+    document.getElementById('comparisonSection').classList.add('d-none');
+    document.getElementById('comparisonContent').innerHTML = '';
+}
+
+function compareInDetail() {
+    if (comparisonItems.length > 0) {
+        window.location.href = `/compare?ids=${comparisonItems.join(',')}`;
+    }
+}
+
+function exportComparison() {
+    if (comparisonItems.length === 0) return;
+
+    fetch(`/api/diagnosis/compare/export?ids=${comparisonItems.join(',')}`)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comparison_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Error exporting comparison:', error);
+            alert('Error exporting comparison');
+        });
+}
+
+// Add CSS for fadeOut animation
+const style = document.createElement('style');
+style.textContent = `
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(20px); }
+}
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

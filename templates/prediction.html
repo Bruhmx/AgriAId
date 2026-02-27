@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - AgriAId{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-image me-2"></i>Uploaded Image</h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ url_for('static', filename='uploads/' + image_path) }}"
+                     class="img-fluid rounded"
+                     alt="Uploaded image"
+                     style="max-height: 300px;">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Crop Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Identified Crop:</h6>
+                    <span class="badge bg-success fs-6">{{ crop }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6>Confidence:</h6>
+                    <span class="badge bg-info fs-6">{{ crop_confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Prediction Results</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    <i class="fas fa-lightbulb me-2 text-warning"></i>
+                    Based on initial image analysis, here are the top possible diseases.
+                    For more accurate diagnosis, please answer the expert questions below.
+                </p>
+
+                <div class="row">
+                    {% for disease in diseases %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card disease-card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ disease.name }}</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-{{ 'success' if disease.confidence > 70 else 'warning' if disease.confidence > 50 else 'danger' }}"
+                                         role="progressbar"
+                                         style="width: {{ disease.confidence }}%">
+                                        {{ "%.1f"|format(disease.confidence) }}%
+                                    </div>
+                                </div>
+                                <p class="small text-muted mb-0">
+                                    Confidence: {{ "%.1f"|format(disease.confidence) }}%
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Note:</strong> Visual symptoms alone may not be sufficient for accurate diagnosis.
+                    The next step uses expert-based questioning to refine the results.
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Next Step: Expert Validation</h5>
+            </div>
+            <div class="card-body">
+                <p>To improve diagnostic accuracy, please answer a few questions about the symptoms:</p>
+                <ul class="mb-4">
+                    <li>Questions are based on agricultural expertise</li>
+                    <li>Each question helps narrow down the disease</li>
+                    <li>Answer based on your field observation</li>
+                    <li>If unsure, select "I don't know"</li>
+                </ul>
+
+                <div class="d-grid">
+                    <a href="/questions" class="btn btn-success btn-lg">
+                        <i class="fas fa-question-circle me-2"></i>Answer Adaptive Questions
+                    </a>
+                    <a href="/upload" class="btn btn-outline-secondary mt-2">
+                        <i class="fas fa-redo me-2"></i>Upload Different Image
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

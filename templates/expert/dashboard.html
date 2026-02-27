@@ -1,0 +1,74 @@
+{% extends "expert/base_expert.html" %}
+
+{% block title %}Expert Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Welcome, {{ expert.full_name or expert.username }}!</h1>
+    <span class="text-muted">{{ now.strftime('%B %d, %Y') }}</span>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-primary">{{ total_diagnoses }}</h3>
+            <p class="text-muted mb-0">Total Diagnoses</p>
+            <small class="text-success">Need expert review</small>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-info">{{ disease_count }}</h3>
+            <p class="text-muted mb-0">Diseases in Library</p>
+            <small class="text-info">Available for reference</small>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-success">{{ days_joined }} days</h3>
+            <p class="text-muted mb-0">Member Since</p>
+            <small>{{ expert.created_at.strftime('%B %Y') }}</small>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Expert Tools</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('expert_diseases') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-book me-2"></i>Manage Disease Library
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('expert_pending_reviews') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-check-circle me-2"></i>Review Diagnoses
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('expert_history') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-history me-2"></i>Review History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add custom filter for days since
+document.addEventListener('DOMContentLoaded', function() {
+    // This is handled by the backend
+});
+</script>
+{% endblock %}

@@ -1,0 +1,672 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Page Header -->
+            <div class="page-header mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-5 mb-3">
+                            <i class="fas fa-user-circle me-2 text-primary"></i>My Profile
+                        </h1>
+                        <p class="lead text-muted">
+                            Manage your personal information, activity, and preferences.
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <a href="{{ url_for('settings') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog me-1"></i>Settings
+                        </a>
+                        <button class="btn btn-outline-success" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>Print Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Left Column: Profile Info -->
+                <div class="col-lg-4">
+                    <!-- Profile Card -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body text-center">
+                            <!-- Profile Picture -->
+                            <div class="position-relative d-inline-block mb-4">
+                                <div class="avatar-upload">
+                                    <div id="profileImageContainer">
+                                        {% if user and user.profile_image %}
+                                        <img src="{{ url_for('static', filename='uploads/profiles/' + user.profile_image) }}"
+                                             class="rounded-circle" width="150" height="150"
+                                             style="object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);"
+                                             alt="{{ user.username }}"
+                                             id="profileImage">
+                                        {% else %}
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto"
+                                             style="width: 150px; height: 150px; font-size: 4rem; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);"
+                                             id="profileInitial">
+                                            {{ user.username[0]|upper if user and user.username else 'U' }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary mt-3" onclick="document.getElementById('uploadProfileImage').click()">
+                                        <i class="fas fa-camera me-1"></i>Change Photo
+                                    </button>
+                                    <input type="file" id="uploadProfileImage" class="d-none" accept="image/*" onchange="uploadProfileImage(this)">
+                                </div>
+                            </div>
+
+                            <!-- User Info -->
+                            <h4 class="mb-1">{{ user.full_name or user.username }}</h4>
+                            <p class="text-muted mb-3">@{{ user.username }}</p>
+
+                            <div class="d-flex justify-content-center mb-3">
+                                <span class="badge bg-primary fs-6">
+                                    <i class="fas fa-user-tag me-1"></i>
+                                    {{ user.user_type|title if user and user.user_type else 'Farmer' }}
+                                </span>
+                                {% if user.is_active %}
+                                <span class="badge bg-success fs-6 ms-2">
+                                    <i class="fas fa-check-circle me-1"></i>Active
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="row text-center mb-4">
+                                <div class="col-4">
+                                    <h5 class="mb-0">{{ stats.total_diagnosis if stats and stats.total_diagnosis else 0 }}</h5>
+                                    <small class="text-muted">Diagnoses</small>
+                                </div>
+                                <div class="col-4">
+                                    <h5 class="mb-0">{{ stats.saved_items if stats and stats.saved_items else 0 }}</h5>
+                                    <small class="text-muted">Saved</small>
+                                </div>
+                                <div class="col-4">
+                                    <h5 class="mb-0">{{ stats.days_active if stats and stats.days_active else 0 }}</h5>
+                                    <small class="text-muted">Days Active</small>
+                                </div>
+                            </div>
+
+                            <!-- Contact Info -->
+                            <div class="text-start">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-envelope text-muted me-3" style="width: 20px;"></i>
+                                    <span>{{ user.email }}</span>
+                                </div>
+                                {% if user.phone_number %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-phone text-muted me-3" style="width: 20px;"></i>
+                                    <span>{{ user.phone_number }}</span>
+                                </div>
+                                {% endif %}
+                                {% if user.location %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map-marker-alt text-muted me-3" style="width: 20px;"></i>
+                                    <span>{{ user.location }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-calendar-alt text-muted me-3" style="width: 20px;"></i>
+                                    <span>Joined {{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</span>
+                                </div>
+                                {% if user.last_login %}
+                                <div class="d-flex align-items-center mt-2">
+                                    <i class="fas fa-sign-in-alt text-muted me-3" style="width: 20px;"></i>
+                                    <span>Last login: {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                <a href="{{ url_for('upload_image') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-camera text-primary me-2"></i>New Diagnosis
+                                </a>
+                                <a href="{{ url_for('history') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-history text-success me-2"></i>View History
+                                </a>
+                                <a href="{{ url_for('saved_diagnoses') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-bookmark text-warning me-2"></i>Saved Items
+                                </a>
+                                <a href="{{ url_for('settings') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-cog text-info me-2"></i>Settings
+                                </a>
+                                <a href="{{ url_for('submit_feedback', diagnosis_id=0) if url_for('submit_feedback', diagnosis_id=0) else '/feedback' }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-comments text-secondary me-2"></i>Send Feedback
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Activity & Details -->
+                <div class="col-lg-8">
+                    <!-- Bio Section -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="fas fa-user-edit me-2"></i>About Me</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="bioDisplay">
+                                {% if user and user.bio %}
+                                <p>{{ user.bio }}</p>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editBio()">
+                                    <i class="fas fa-edit me-1"></i>Edit Bio
+                                </button>
+                                {% else %}
+                                <p class="text-muted mb-3">No bio added yet.</p>
+                                <button class="btn btn-sm btn-primary" onclick="editBio()">
+                                    <i class="fas fa-plus me-1"></i>Add Bio
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div id="bioEdit" class="d-none">
+                                <textarea class="form-control mb-3" id="bioText" rows="4" maxlength="500">{{ user.bio or '' }}</textarea>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted"><span id="charCount">{{ user.bio|length if user.bio else 0 }}</span>/500 characters</small>
+                                    <div>
+                                        <button class="btn btn-sm btn-secondary" onclick="cancelEditBio()">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" onclick="saveBio()">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                                <a href="{{ url_for('history') }}" class="btn btn-sm btn-light">View All</a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_activity %}
+                            <div class="timeline">
+                                {% for activity in recent_activity %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-{{
+                                        'success' if activity.type == 'diagnosis'
+                                        else 'warning' if activity.type == 'save'
+                                        else 'info' if activity.type == 'note'
+                                        else 'secondary'
+                                    }}"></div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">
+                                                {% if activity.type == 'diagnosis' %}
+                                                <i class="fas fa-stethoscope me-2 text-success"></i>New Diagnosis
+                                                {% elif activity.type == 'save' %}
+                                                <i class="fas fa-bookmark me-2 text-warning"></i>Saved Diagnosis
+                                                {% elif activity.type == 'note' %}
+                                                <i class="fas fa-sticky-note me-2 text-info"></i>Added Note
+                                                {% else %}
+                                                <i class="fas fa-user me-2 text-secondary"></i>Profile Update
+                                                {% endif %}
+                                                {{ activity.title }}
+                                            </h6>
+                                            <small class="text-muted">{{ activity.time }}</small>
+                                        </div>
+                                        <p class="mb-0 small text-muted">{{ activity.description }}</p>
+                                        {% if activity.link %}
+                                        <a href="{{ activity.link }}" class="small">View Details →</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No recent activity to display.</p>
+                                <a href="{{ url_for('upload_image') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-camera me-1"></i>Start Your First Diagnosis
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Crop Expertise -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="fas fa-seedling me-2"></i>Crop Expertise</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if crop_expertise %}
+                            <div class="row">
+                                {% for crop in crop_expertise %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center"
+                                                 style="width: 50px; height: 50px;">
+                                                <i class="fas fa-leaf"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-0">{{ crop.name|title }}</h6>
+                                            <small class="text-muted">{{ crop.diagnosis_count }} diagnoses</small>
+                                            <div class="progress mt-1" style="height: 5px;">
+                                                <div class="progress-bar bg-success" style="width: {{ crop.percentage }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-3">
+                                <i class="fas fa-seedling fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-3">Start diagnosing to build your crop expertise profile.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Completion -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Profile Completion</h5>
+                        <span class="badge bg-light text-dark">{{ profile_completion if profile_completion else 0 }}%</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar bg-success" style="width: {{ profile_completion if profile_completion else 0 }}%">
+                            {{ profile_completion if profile_completion else 0 }}%
+                        </div>
+                    </div>
+                    <div class="row">
+                        {% if completion_items %}
+                            {% for item in completion_items %}
+                            <div class="col-md-4 mb-2">
+                                <div class="d-flex align-items-center">
+                                    {% if item.completed %}
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    {% else %}
+                                    <i class="fas fa-circle text-muted me-2"></i>
+                                    {% endif %}
+                                    <span class="{{ 'text-muted' if not item.completed else '' }}">{{ item.label }}</span>
+                                    {% if not item.completed and item.action %}
+                                    <a href="{{ item.action }}" class="btn btn-sm btn-link ms-auto">Add</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12">
+                                <p class="text-muted text-center mb-0">Complete your profile to see completion progress.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-upload input[type="file"] {
+    cursor: pointer;
+}
+
+.avatar-preview {
+    overflow: hidden;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -25px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    top: 5px;
+}
+
+.timeline-content {
+    padding-bottom: 10px;
+}
+
+.badge-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge-icon.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #fff;
+}
+
+.badge-icon.silver {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    color: #fff;
+}
+
+.badge-icon.bronze {
+    background: linear-gradient(135deg, #CD7F32, #8B4513);
+    color: #fff;
+}
+
+.badge-icon.blue {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: #fff;
+}
+
+.card {
+    transition: transform 0.2s ease;
+    border: none;
+    border-radius: 15px;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+}
+
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+@media print {
+    .btn, .avatar-upload, .timeline::before, .timeline-marker {
+        display: none !important;
+    }
+
+    .card {
+        border: 1px solid #dee2e6 !important;
+        break-inside: avoid;
+    }
+}
+</style>
+
+<script>
+// Bio editing - FIXED VERSION
+function editBio() {
+    document.getElementById('bioDisplay').classList.add('d-none');
+    document.getElementById('bioEdit').classList.remove('d-none');
+
+    const bioText = document.getElementById('bioText');
+    const charCount = document.getElementById('charCount');
+    charCount.textContent = bioText.value.length;
+
+    bioText.focus();
+}
+
+function cancelEditBio() {
+    document.getElementById('bioEdit').classList.add('d-none');
+    document.getElementById('bioDisplay').classList.remove('d-none');
+}
+
+function saveBio() {
+    const bioText = document.getElementById('bioText').value.trim();
+
+    if (bioText.length > 500) {
+        alert('Bio must be 500 characters or less.');
+        return;
+    }
+
+    // Show loading state
+    const saveBtn = document.querySelector('#bioEdit .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    saveBtn.disabled = true;
+
+    fetch('/api/profile/update-bio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bio: bioText })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'Failed to update bio'); });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            document.getElementById('bioEdit').classList.add('d-none');
+            document.getElementById('bioDisplay').classList.remove('d-none');
+
+            // Update display
+            const bioDisplay = document.getElementById('bioDisplay');
+            if (bioText) {
+                bioDisplay.innerHTML = `
+                    <p>${escapeHtml(bioText)}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editBio()">
+                        <i class="fas fa-edit me-1"></i>Edit Bio
+                    </button>
+                `;
+            } else {
+                bioDisplay.innerHTML = `
+                    <p class="text-muted mb-3">No bio added yet.</p>
+                    <button class="btn btn-sm btn-primary" onclick="editBio()">
+                        <i class="fas fa-plus me-1"></i>Add Bio
+                    </button>
+                `;
+            }
+
+            showToast('Bio updated successfully!', 'success');
+        } else {
+            showToast(data.error || 'Failed to update bio', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message || 'An error occurred while updating bio', 'danger');
+    })
+    .finally(() => {
+        // Restore button state
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+// Profile image upload
+function uploadProfileImage(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Image must be less than 2MB.');
+        return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+        alert('Please upload a valid image (JPEG, PNG, GIF).');
+        return;
+    }
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    // Show loading
+    const profileImageContainer = document.getElementById('profileImageContainer');
+    const originalContent = profileImageContainer.innerHTML;
+    profileImageContainer.innerHTML = '<div class="spinner-border text-primary"></div>';
+
+    // Upload
+    fetch('/api/profile/upload-image', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload page to show new image
+            location.reload();
+        } else {
+            profileImageContainer.innerHTML = originalContent;
+            alert(data.error || 'Failed to upload image.');
+        }
+    })
+    .catch(error => {
+        profileImageContainer.innerHTML = originalContent;
+        alert('Error uploading image.');
+        console.error('Upload error:', error);
+    });
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // Add toast to container
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize character count for bio
+document.addEventListener('DOMContentLoaded', function() {
+    const bioText = document.getElementById('bioText');
+    if (bioText) {
+        bioText.addEventListener('input', function() {
+            const charCount = document.getElementById('charCount');
+            if (charCount) {
+                charCount.textContent = this.value.length;
+            }
+        });
+    }
+
+    // Initialize tooltips if any
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+E to edit bio
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        if (!document.getElementById('bioEdit').classList.contains('d-none')) {
+            saveBio();
+        } else {
+            editBio();
+        }
+    }
+
+    // Ctrl+P to print
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+    }
+});
+
+// Export profile data
+function exportProfileData() {
+    fetch('/api/profile/export-data')
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `profile_data_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Export error:', error);
+            showToast('Failed to export profile data', 'danger');
+        });
+}
+
+// Share profile
+function shareProfile() {
+    const profileUrl = window.location.href;
+
+    if (navigator.share) {
+        navigator.share({
+            title: `${'{{ user.username }}'}'s AgriAId Profile`,
+            text: `Check out ${'{{ user.username }}'}'s plant disease diagnosis profile on AgriAId`,
+            url: profileUrl
+        }).catch(console.error);
+    } else {
+        navigator.clipboard.writeText(profileUrl).then(() => {
+            showToast('Profile link copied to clipboard!', 'success');
+        }).catch(() => {
+            showToast('Failed to copy link', 'danger');
+        });
+    }
+}
+</script>
+{% endblock %}

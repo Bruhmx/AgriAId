@@ -1,0 +1,618 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Additional dashboard-specific styles */
+    .health-factor-tooltip {
+        cursor: help;
+        border-bottom: 1px dashed #ccc;
+    }
+
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%);
+        pointer-events: none;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .trend-indicator {
+        font-size: 0.85rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: rgba(0,0,0,0.05);
+    }
+
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+    .trend-neutral { color: #6c757d; }
+
+    .quick-action-btn {
+        transition: all 0.2s;
+    }
+
+    .quick-action-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .activity-feed {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+
+    .activity-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .progress {
+        background-color: #e9ecef;
+        border-radius: 10px;
+    }
+
+    .progress-bar {
+        border-radius: 10px;
+        transition: width 1s ease-in-out;
+    }
+
+    .refresh-indicator {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header with Refresh Button -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">
+            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Home</a></li>
+                <li class="breadcrumb-item active">Dashboard</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex align-items-center">
+        <span class="text-muted me-3">
+            <i class="far fa-calendar-alt me-1"></i>{{ now.strftime('%B %d, %Y') }}
+        </span>
+        <button class="btn btn-outline-primary btn-sm" onclick="location.reload()" id="refreshBtn">
+            <i class="fas fa-sync-alt me-1" id="refreshIcon"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- System Health Score with Tooltips -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-heartbeat me-2 text-danger"></i>System Health Score
+                    <i class="fas fa-info-circle text-muted ms-1 health-factor-tooltip"
+                       data-bs-toggle="tooltip"
+                       title="Overall system health based on multiple factors"></i>
+                </h5>
+                <span class="badge bg-{{ 'success' if health_score >= 70 else 'warning' if health_score >= 50 else 'danger' }}"
+                      style="font-size: 1.5rem; padding: 0.5rem 1.5rem;">
+                    {{ health_score }}%
+                </span>
+            </div>
+            <div class="row">
+                {% for factor in health_factors %}
+                <div class="col-md-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="health-factor-tooltip"
+                               data-bs-toggle="tooltip"
+                               title="{{ factor.description }}">
+                            <i class="fas fa-{{ factor.icon }} me-1"></i>{{ factor.factor }}
+                        </small>
+                        <small>{{ factor.score }}/{{ factor.max }}</small>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-{{ 'success' if (factor.score/factor.max*100) >= 70
+                                                       else 'warning' if (factor.score/factor.max*100) >= 50
+                                                       else 'danger' }}"
+                             role="progressbar"
+                             style="width: {{ (factor.score/factor.max*100) }}%"
+                             aria-valuenow="{{ factor.score }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ factor.max }}"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards with Trends -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ user_stats.total_users }}</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-icon" style="background: rgba(13,110,253,0.1); color: var(--primary-color);">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-success">
+                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>{{ user_stats.active_users }} active
+                    </span>
+                    <span class="text-danger">
+                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>{{ user_stats.inactive_users }} inactive
+                    </span>
+                </div>
+                <div class="progress" style="height: 5px;">
+                    <div class="progress-bar bg-success"
+                         style="width: {{ (user_stats.active_users / user_stats.total_users * 100) if user_stats.total_users > 0 else 0 }}%"></div>
+                    <div class="progress-bar bg-danger"
+                         style="width: {{ (user_stats.inactive_users / user_stats.total_users * 100) if user_stats.total_users > 0 else 0 }}%"></div>
+                </div>
+            </div>
+            <div class="mt-2 small text-muted">
+                <i class="fas fa-arrow-up trend-up me-1"></i>+{{ user_stats.new_users_today|default(0) }} today
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ active_today }}</div>
+                    <div class="stat-label">Active Today</div>
+                </div>
+                <div class="stat-icon" style="background: rgba(25,135,84,0.1); color: var(--success-color);">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="d-flex align-items-center">
+                    <span class="trend-indicator">
+                        {% set active_percentage = (active_today / user_stats.total_users * 100) if user_stats.total_users > 0 else 0 %}
+                        <i class="fas fa-{{ 'arrow-up' if active_percentage > 10 else 'arrow-down' if active_percentage < 5 else 'minus' }} me-1
+                                  {{ 'trend-up' if active_percentage > 10 else 'trend-down' if active_percentage < 5 else 'trend-neutral' }}"></i>
+                        {{ active_percentage|round(1) }}% of total
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ total_diagnoses }}</div>
+                    <div class="stat-label">Total Diagnoses</div>
+                </div>
+                <div class="stat-icon" style="background: rgba(255,193,7,0.1); color: #997404;">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-success">
+                        <i class="fas fa-calendar-week me-1"></i>{{ monthly_diagnoses }} this month
+                    </span>
+                    <span class="badge bg-{{ 'success' if monthly_diagnoses > (total_diagnoses/12) else 'warning' }}">
+                        {{ ((monthly_diagnoses / total_diagnoses * 100) if total_diagnoses > 0 else 0)|round(1) }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ accuracy_stats.accuracy_rate }}%</div>
+                    <div class="stat-label">System Accuracy</div>
+                </div>
+                <div class="stat-icon" style="background: rgba(13,202,240,0.1); color: #087990;">
+                    <i class="fas fa-star"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="d-flex align-items-center">
+                    <span class="text-muted small">
+                        Based on {{ accuracy_stats.total_verified }} verified reports
+                    </span>
+                </div>
+                <div class="mt-2">
+                    <span class="badge bg-{{ 'success' if accuracy_stats.accuracy_rate >= 85 else 'warning' if accuracy_stats.accuracy_rate >= 70 else 'danger' }}">
+                        {{ 'Excellent' if accuracy_stats.accuracy_rate >= 85 else 'Good' if accuracy_stats.accuracy_rate >= 70 else 'Needs Improvement' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Distribution and System Performance -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-chart-pie me-2 text-primary"></i>User Distribution</h5>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="row text-center">
+                <div class="col-4 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-primary mb-1">{{ user_stats.total_farmers|default(0) }}</h3>
+                        <small class="text-muted">Farmers</small>
+                    </div>
+                </div>
+                <div class="col-4 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-success mb-1">{{ user_stats.total_experts|default(0) }}</h3>
+                        <small class="text-muted">Experts</small>
+                    </div>
+                </div>
+                <div class="col-4 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-info mb-1">{{ user_stats.total_researchers|default(0) }}</h3>
+                        <small class="text-muted">Researchers</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-warning mb-1">{{ user_stats.total_students|default(0) }}</h3>
+                        <small class="text-muted">Students</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-danger mb-1">{{ user_stats.total_admins|default(0) }}</h3>
+                        <small class="text-muted">Admins</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-chart-bar me-2 text-success"></i>System Performance</h5>
+            </div>
+            <div class="row text-center">
+                <div class="col-6 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-primary mb-1">{{ confidence_stats.avg_confidence }}%</h3>
+                        <small class="text-muted">Avg Confidence</small>
+                        <div class="progress mt-2" style="height: 3px;">
+                            <div class="progress-bar bg-primary" style="width: {{ confidence_stats.avg_confidence }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-success mb-1">{{ feedback_stats.total_feedback|default(0) }}</h3>
+                        <small class="text-muted">Total Feedback</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-warning mb-1">{{ feedback_stats.pending_feedback|default(0) }}</h3>
+                        <small class="text-muted">Pending</small>
+                        {% if feedback_stats.pending_feedback > 0 %}
+                        <a href="{{ url_for('admin_feedback', status='pending') }}" class="stretched-link"></a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-info mb-1">{{ feedback_stats.resolved_feedback|default(0) }}</h3>
+                        <small class="text-muted">Resolved</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activities with Live Updates -->
+<div class="table-container">
+    <div class="table-header">
+        <h5><i class="fas fa-history me-2 text-info"></i>Recent Activities</h5>
+        <div>
+            <span class="badge bg-info me-2" id="activityCount">{{ recent_activities|length }} activities</span>
+            <a href="{{ url_for('admin_analytics') }}" class="btn btn-sm btn-outline-primary">
+                View Analytics <i class="fas fa-chart-line ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="activity-feed">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in recent_activities %}
+                <tr class="activity-item">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle me-2 d-flex align-items-center justify-content-center text-white"
+                                 style="width: 32px; height: 32px; background: {{ activity.avatar_color }}; border-radius: 50%; font-weight: bold;">
+                                {{ activity.username[0]|upper }}
+                            </div>
+                            <div>
+                                <strong>{{ activity.username }}</strong>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary">
+                            <i class="fas fa-{{ activity.action_icon|default('circle') }} me-1"></i>{{ activity.action }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="text-muted" title="{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') }}">
+                            <i class="far fa-clock me-1"></i>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center py-4">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No recent activities</h5>
+                        <p class="text-muted small">Activities will appear here when users interact with the system</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Diagnosis Statistics -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-chart-simple me-2 text-primary"></i>Diagnosis Summary</h5>
+            </div>
+            <div class="row text-center">
+                <div class="col-6 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-primary mb-1">{{ total_diagnoses }}</h3>
+                        <small class="text-muted">Total Diagnoses</small>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-success mb-1">{{ monthly_diagnoses }}</h3>
+                        <small class="text-muted">This Month</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-info mb-1">{{ avg_confidence }}%</h3>
+                        <small class="text-muted">Avg Confidence</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <h3 class="text-warning mb-1">{{ active_today }}</h3>
+                        <small class="text-muted">Active Today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-seedling me-2 text-success"></i>Diagnoses by Crop</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Crop</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for crop in diagnoses_by_crop %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-{{ 'tractor' if 'corn' in crop.crop|lower
+                                                   else 'seedling' if 'rice' in crop.crop|lower
+                                                   else 'leaf' }} me-2"></i>
+                                {{ crop.crop }}
+                            </td>
+                            <td><span class="badge bg-primary">{{ crop.count }}</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2">{{ ((crop.count / total_diagnoses * 100) if total_diagnoses > 0 else 0)|round(1) }}%</span>
+                                    <div class="progress flex-grow-1" style="height: 5px;">
+                                        <div class="progress-bar bg-primary"
+                                             style="width: {{ ((crop.count / total_diagnoses * 100) if total_diagnoses > 0 else 0) }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-3">
+                                <i class="fas fa-chart-bar text-muted me-2"></i>
+                                No diagnosis data yet
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disease Library Stats -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-book me-2 text-warning"></i>Disease Library</h5>
+                <span class="badge bg-primary">Total: {{ total_diseases }} diseases</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Crop</th>
+                            <th>Diseases</th>
+                            <th>% of Library</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for crop in disease_by_crop %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-{{ 'tractor' if crop.crop|lower == 'corn'
+                                                   else 'seedling' if crop.crop|lower == 'rice'
+                                                   else 'leaf' }} me-2"></i>
+                                {{ crop.crop|title }}
+                            </td>
+                            <td><span class="badge bg-success">{{ crop.disease_count }}</span></td>
+                            <td>
+                                {{ ((crop.disease_count / total_diseases * 100) if total_diseases > 0 else 0)|round(1) }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5><i class="fas fa-trophy me-2 text-warning"></i>Top Detected Diseases</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Disease</th>
+                            <th>Detections</th>
+                            <th>Avg Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disease in top_diseases %}
+                        <tr>
+                            <td>{{ disease.disease_detected }}</td>
+                            <td><span class="badge bg-primary">{{ disease.count }}</span></td>
+                            <td>{{ disease.avg_confidence }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-3">
+                                <i class="fas fa-chart-bar text-muted me-2"></i>
+                                No diagnosis data yet
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats Footer -->
+<div class="row">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <small class="text-muted d-block">Server Time</small>
+                        <strong>{{ now.strftime('%H:%M:%S') }}</strong>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted d-block">Last Updated</small>
+                        <strong id="lastUpdated">{{ now.strftime('%H:%M:%S') }}</strong>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted d-block">Database Size</small>
+                        <strong>{{ db_size|default('N/A') }}</strong>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted d-block">API Status</small>
+                        <span class="badge bg-success">Operational</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Simple refresh function
+document.getElementById('refreshBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    location.reload();
+});
+</script>
+{% endblock %}

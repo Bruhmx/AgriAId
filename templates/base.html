@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriAId - {% block title %}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --primary-green: #27ae60;
+            --primary-dark: #219653;
+            --secondary-green: #6fcf97;
+            --light-green: #d4edda;
+            --accent-gold: #f2c94c;
+            --accent-orange: #f2994a;
+            --dark-text: #1a1a1a;
+            --medium-text: #4f4f4f;
+            --light-text: #828282;
+            --background: #f8f9fa;
+            --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --hover-shadow: 0 15px 35px rgba(39, 174, 96, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--background);
+            color: var(--dark-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+
+        /* ========== NAVBAR STYLES ========== */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-dark) 100%);
+            padding: 0.8rem 0;
+            box-shadow: 0 4px 20px rgba(39, 174, 96, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .navbar .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.8rem;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+        }
+
+        .navbar-brand:hover {
+            transform: translateY(-2px);
+        }
+
+        .navbar-brand i {
+            color: var(--accent-gold);
+            filter: drop-shadow(0 2px 4px rgba(242, 201, 76, 0.3));
+            font-size: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            border-radius: 12px;
+        }
+
+        /* Desktop Horizontal Menu */
+        .desktop-menu {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 500;
+            padding: 0.75rem 1.25rem !important;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link i {
+            margin-right: 0.5rem;
+            font-size: 0.9em;
+        }
+
+        /* User dropdown */
+        .user-dropdown {
+            margin-left: 1rem;
+        }
+
+        .user-dropdown .dropdown-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .user-dropdown .dropdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid white;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-orange) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .dropdown-menu {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 0.5rem;
+            margin-top: 0.75rem;
+            background: white;
+            min-width: 220px;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            color: var(--medium-text);
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Auth buttons */
+        .auth-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-left: 1rem;
+        }
+
+        .btn-login {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-login:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-register {
+            background: white;
+            color: var(--primary-green);
+            border: none;
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-register:hover {
+            background: var(--light-green);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Mobile Toggle Button */
+        .mobile-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 10px 15px;
+            color: white;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            display: none;
+            cursor: pointer;
+        }
+
+        .mobile-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: white;
+        }
+
+        /* Mobile Sidebar - Slides from RIGHT */
+        .mobile-sidebar {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-dark) 100%);
+            z-index: 1050;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: -2px 0 20px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+
+        .mobile-sidebar.show {
+            right: 0;
+        }
+
+        /* Sidebar Header */
+        .sidebar-header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-brand i {
+            color: var(--accent-gold);
+        }
+
+        .close-sidebar {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .close-sidebar:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: rotate(90deg);
+        }
+
+        /* Sidebar User */
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+        }
+
+        .sidebar-user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .sidebar-user-info h6 {
+            color: white;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .sidebar-user-info .badge {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            font-size: 0.7rem;
+        }
+
+        /* Sidebar Menu */
+        .sidebar-menu {
+            padding: 1rem 0;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-item {
+            margin: 0.25rem 0;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.875rem 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .sidebar-link i {
+            width: 24px;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            padding-left: 2rem;
+        }
+
+        .sidebar-link.text-danger {
+            color: #ff6b6b !important;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 1rem 0;
+        }
+
+        /* Sidebar Auth */
+        .sidebar-auth {
+            padding: 1rem 1.5rem;
+        }
+
+        .sidebar-auth .btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .sidebar-auth .btn-login {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .sidebar-auth .btn-register {
+            background: white;
+            color: var(--primary-green);
+        }
+
+        /* Overlay */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(3px);
+        }
+
+        .sidebar-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-container {
+            flex: 1;
+            padding-top: 2.5rem;
+            padding-bottom: 4rem;
+        }
+
+        /* ========== RESPONSIVE BREAKPOINTS ========== */
+        @media (max-width: 991px) {
+            .mobile-toggle {
+                display: block;
+            }
+
+            .desktop-menu {
+                display: none !important;
+            }
+
+            .mobile-sidebar {
+                display: block;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .mobile-sidebar {
+                display: none !important;
+            }
+
+            .sidebar-overlay {
+                display: none !important;
+            }
+
+            .mobile-toggle {
+                display: none !important;
+            }
+        }
+
+        /* Keep all your existing card, table, footer styles exactly as they were */
+        /* ========== CARD STYLES ========== */
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-green), var(--secondary-green));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-dark) 100%);
+            border: none;
+            padding: 1.5rem;
+            border-radius: 20px 20px 0 0 !important;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .card-header h3, .card-header h4, .card-header h5 {
+            color: white;
+            font-weight: 700;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        /* ========== FOOTER STYLES ========== */
+        .footer {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #1a7431 100%);
+            color: white;
+            padding: 3rem 0 2rem;
+            margin-top: auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        }
+
+        .footer a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
+        /* Keep all your existing utility classes */
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-leaf"></i>AgriAId
+            </a>
+
+            <!-- Mobile menu button (right side) -->
+            <button class="mobile-toggle" type="button" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Desktop Horizontal Menu -->
+            <div class="desktop-menu">
+                <ul class="nav-links">
+                    <li><a class="nav-link" href="/"><i class="fas fa-home"></i>Home</a></li>
+                    <li><a class="nav-link" href="{% if session.user_id %}/upload{% else %}/login?redirect=/upload{% endif %}"><i class="fas fa-camera"></i>Diagnose</a></li>
+                    <li><a class="nav-link" href="/disease-library"><i class="fas fa-book"></i>Library</a></li>
+                    <li><a class="nav-link" href="/about"><i class="fas fa-info-circle"></i>About</a></li>
+
+                    {% if session.user_id %}
+                    <!-- User Dropdown -->
+                    <li class="user-dropdown">
+                        <div class="dropdown">
+                            <button class="dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
+                                {% if session.profile_image %}
+                                <img src="/static/uploads/profiles/{{ session.profile_image }}" alt="{{ session.username }}" class="user-avatar me-2">
+                                {% else %}
+                                <div class="user-avatar me-2">{{ session.username[0]|upper }}</div>
+                                {% endif %}
+                                <span class="d-none d-md-inline">{{ session.username }}</span>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('my_diagnoses') }}"><i class="fas fa-history"></i>History</a></li>
+                                <li><a class="dropdown-item" href="/saved"><i class="fas fa-bookmark"></i>Saved</a></li>
+                                <li><a class="dropdown-item" href="/feedback"><i class="fas fa-comments"></i>Feedback</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% if session.user_type == 'admin' %}
+                                <li><a class="dropdown-item" href="/admin/users"><i class="fas fa-cog"></i>Admin Panel</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="/settings"><i class="fas fa-cog"></i>Settings</a></li>
+                                <li><a class="dropdown-item text-danger" href="/logout"><i class="fas fa-sign-out-alt"></i>Logout</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    {% else %}
+                    <!-- Auth Buttons -->
+                    <li>
+                        <div class="auth-buttons">
+                            <a href="/login?redirect={{ request.path if request.path != '/' and request.path != '/login' and request.path != '/register' else '' }}" class="btn-login"><i class="fas fa-sign-in-alt me-2"></i>Login</a>
+                            <a href="/register?redirect={{ request.path if request.path != '/' and request.path != '/login' and request.path != '/register' else '' }}" class="btn-register"><i class="fas fa-user-plus me-2"></i>Sign Up</a>
+                        </div>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Side Drawer (Slides from RIGHT) -->
+    <div class="mobile-sidebar" id="mobileSidebar">
+        <div class="sidebar-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <a class="sidebar-brand" href="/">
+                    <i class="fas fa-leaf"></i>AgriAId
+                </a>
+                <button class="close-sidebar" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            {% if session.user_id %}
+            <div class="sidebar-user">
+                {% if session.profile_image %}
+                <img src="/static/uploads/profiles/{{ session.profile_image }}" alt="{{ session.username }}" class="sidebar-user-avatar">
+                {% else %}
+                <div class="sidebar-user-avatar bg-white text-primary">{{ session.username[0]|upper }}</div>
+                {% endif %}
+                <div class="sidebar-user-info">
+                    <h6>{{ session.full_name or session.username }}</h6>
+                    <span class="badge">{{ session.user_type|title }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-menu">
+            <ul class="sidebar-nav">
+                <li class="sidebar-item"><a class="sidebar-link" href="/"><i class="fas fa-home"></i>Home</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="{% if session.user_id %}/upload{% else %}/login?redirect=/upload{% endif %}"><i class="fas fa-camera"></i>Diagnose</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="/disease-library"><i class="fas fa-book"></i>Library</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="/about"><i class="fas fa-info-circle"></i>About</a></li>
+            </ul>
+
+            {% if session.user_id %}
+            <div class="sidebar-divider"></div>
+            <ul class="sidebar-nav">
+                <li class="sidebar-item"><a class="sidebar-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="{{ url_for('my_diagnoses') }}"><i class="fas fa-history"></i>History</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="/saved"><i class="fas fa-bookmark"></i>Saved</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="/feedback"><i class="fas fa-comments"></i>Feedback</a></li>
+                <li class="sidebar-item"><a class="sidebar-link" href="/settings"><i class="fas fa-cog"></i>Settings</a></li>
+                {% if session.user_type == 'admin' %}
+                <li class="sidebar-item"><a class="sidebar-link" href="/admin/users"><i class="fas fa-cog"></i>Admin Panel</a></li>
+                {% endif %}
+            </ul>
+            <div class="sidebar-divider"></div>
+            <ul class="sidebar-nav">
+                <li class="sidebar-item"><a class="sidebar-link text-danger" href="/logout"><i class="fas fa-sign-out-alt"></i>Logout</a></li>
+            </ul>
+            {% else %}
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-auth">
+                <a href="/login?redirect={{ request.path if request.path != '/' and request.path != '/login' and request.path != '/register' else '' }}" class="btn-login w-100 mb-2"><i class="fas fa-sign-in-alt me-2"></i>Login</a>
+                <a href="/register?redirect={{ request.path if request.path != '/' and request.path != '/login' and request.path != '/register' else '' }}" class="btn-register w-100"><i class="fas fa-user-plus me-2"></i>Sign Up</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <div class="container main-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="fas {% if category == 'success' %}fa-check-circle text-success{% elif category == 'danger' %}fa-exclamation-triangle text-danger{% elif category == 'warning' %}fa-exclamation-circle text-warning{% else %}fa-info-circle text-info{% endif %} me-3"></i>
+                            <div class="flex-grow-1">{{ message }}</div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <h5 class="mb-3"><i class="fas fa-leaf me-2"></i>AgriAId</h5>
+                    <p class="mb-3 opacity-75">AI-powered crop disease detection system for sustainable agriculture.</p>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
+                    <h6 class="mb-3">Quick Links</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/terms">Terms of Service</a></li>
+                        <li class="mb-2"><a href="/privacy">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-4 mb-4 mb-md-0">
+                    <h6 class="mb-3">Resources</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/user_guide">User Guide</a></li>
+                        <li class="mb-2"><a href="/faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-4">
+                    <h6 class="mb-3">Contact Info</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-envelope me-2"></i>support@agriaid.com</li>
+                        <li class="mb-2"><i class="fas fa-phone me-2"></i>+63 907 0783 564</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4 opacity-25">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <p class="mb-0 opacity-75">&copy; 2026 AgriAId System. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Sidebar Toggle (Slides from Right)
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const openBtn = document.getElementById('sidebarToggle');
+            const closeBtn = document.getElementById('closeSidebar');
+
+            function openSidebar() {
+                sidebar.classList.add('show');
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+
+            if (openBtn) openBtn.addEventListener('click', openSidebar);
+            if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+            if (overlay) overlay.addEventListener('click', closeSidebar);
+
+            // Close sidebar when clicking a link
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', closeSidebar);
+            });
+
+            // Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                    closeSidebar();
+                }
+            });
+        });
+
+        // Add active class to current nav link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link, .sidebar-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

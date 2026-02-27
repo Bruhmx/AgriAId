@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AgriAid | Smart Farming Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #43a047 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-card {
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 25px 50px rgba(0, 40, 0, 0.4);
+            overflow: hidden;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .login-left {
+            background: linear-gradient(135deg, #1e7e34 0%, #2e7d32 50%, #1b5e20 100%);
+            color: white;
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-left::before {
+            content: '\f06c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            font-size: 150px;
+            opacity: 0.15;
+            color: #fff;
+            transform: rotate(-10deg);
+        }
+        .login-left::after {
+            content: '\f185';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            font-size: 100px;
+            opacity: 0.15;
+            color: #fff;
+            transform: rotate(15deg);
+        }
+        .login-right {
+            padding: 60px 50px;
+            background: white;
+        }
+        .brand-logo {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #2e7d32;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+        .brand-logo i {
+            color: #4caf50;
+            margin-right: 10px;
+        }
+        .form-label {
+            color: #1b5e20;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .form-control {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        .form-control:focus {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.15);
+            outline: none;
+        }
+        .input-group-text {
+            background: #e8f5e9;
+            border: 2px solid #e0e0e0;
+            border-right: none;
+            border-radius: 12px 0 0 12px;
+            color: #2e7d32;
+            padding: 10px 15px;
+        }
+        .input-group .form-control {
+            border-left: none;
+            border-radius: 0 12px 12px 0;
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #2e7d32, #4caf50);
+            border: none;
+            color: white;
+            padding: 14px;
+            font-weight: 600;
+            width: 100%;
+            border-radius: 50px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+            font-size: 1.1rem;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 125, 50, 0.4);
+        }
+        .feature-list {
+            margin-top: 40px;
+        }
+        .feature-list li {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+        .feature-list li:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .feature-list i {
+            margin-right: 15px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 2px solid #e8f5e9;
+        }
+        .divider span {
+            padding: 0 20px;
+            color: #2e7d32;
+            font-weight: 600;
+            background: white;
+        }
+        a {
+            color: #2e7d32;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        a:hover {
+            color: #1b5e20;
+            text-decoration: underline !important;
+        }
+        .form-check-input:checked {
+            background-color: #4caf50;
+            border-color: #4caf50;
+        }
+        .form-check-label {
+            color: #2e7d32;
+        }
+        .input-group .btn-outline-secondary {
+            border: 2px solid #e0e0e0;
+            border-left: none;
+            border-radius: 0 12px 12px 0;
+            color: #2e7d32;
+            background: white;
+        }
+        .input-group .btn-outline-secondary:hover {
+            background: #e8f5e9;
+            border-color: #4caf50;
+            color: #1b5e20;
+        }
+        h2 {
+            color: #1b5e20;
+            font-weight: 700;
+            margin-bottom: 30px;
+            border-left: 5px solid #4caf50;
+            padding-left: 20px;
+        }
+        .login-left h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        .alert-success {
+            background: #e8f5e9;
+            border-color: #a5d6a7;
+            color: #1b5e20;
+        }
+        .alert-danger {
+            background: #ffebee;
+            border-color: #ffcdd2;
+            color: #b71c1c;
+        }
+
+        /* Large screen specific styles */
+        @media (min-width: 1200px) {
+            .login-card {
+                max-width: 1200px;
+            }
+            .login-left {
+                padding: 70px 60px;
+                min-height: 700px;
+            }
+            .login-right {
+                padding: 70px 60px;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .login-card {
+                max-width: 1300px;
+            }
+            .login-left {
+                padding: 80px 70px;
+            }
+            .login-right {
+                padding: 80px 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <div class="login-card">
+                    <div class="row g-0">
+                        <!-- Left Column - Green Theme -->
+                        <div class="col-lg-6 login-left d-none d-lg-block">
+                            <div class="position-relative" style="z-index: 2;">
+                                <h1 class="fw-bold mb-4">Welcome Back to AgriAid! 🌱</h1>
+                                <p class="lead mb-5 fs-4">Your smart farming companion for healthy crops and better yields.</p>
+
+                                <ul class="feature-list list-unstyled">
+                                    <li>
+                                        <i class="fas fa-leaf"></i>
+                                        <span>Track disease patterns in your region</span>
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-history"></i>
+                                        <span>Access complete diagnosis history</span>
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>View detailed analytics & insights</span>
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-bell"></i>
+                                        <span>Get real-time preventive alerts</span>
+                                    </li>
+                                </ul>
+
+                            </div>
+                        </div>
+
+                        <!-- Right Column - Login Form -->
+                        <div class="col-lg-6 login-right">
+                            <div class="brand-logo">
+                                <i class="fas fa-seedling"></i>
+                                AgriAid
+                            </div>
+
+                            <h2 class="mb-4">
+                                <i class="fas fa-sign-in-alt me-2" style="color: #4caf50;"></i>
+                                Log In
+                            </h2>
+
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                                            {{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+
+                            <form method="POST" action="{{ url_for('login') }}">
+                                <!-- Add hidden field for redirect -->
+                                {% if redirect_to %}
+                                <input type="hidden" name="redirect" value="{{ redirect_to }}">
+                                {% endif %}
+
+                                <div class="mb-4">
+                                    <label for="username" class="form-label">
+                                        <i class="fas fa-user me-1"></i>Username or Email
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" id="username" name="username"
+                                               placeholder="Enter username or email" required
+                                               autocomplete="username">
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="password" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>Password
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="password" class="form-control" id="password" name="password"
+                                               placeholder="Enter password" required
+                                               autocomplete="current-password">
+                                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                        <label class="form-check-label" for="remember">
+                                            <i class="far fa-check-circle me-1"></i>Remember me
+                                        </label>
+                                    </div>
+                                    <a href="#" class="text-decoration-none">
+                                        <i class="fas fa-question-circle me-1"></i>Forgot password?
+                                    </a>
+                                </div>
+
+                                <button type="submit" class="btn btn-login mb-4">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Log In
+                                </button>
+
+                                <div class="divider">
+                                    <span>New to AgriAid?</span>
+                                </div>
+
+                                <div class="text-center">
+                                    <a href="{{ url_for('register', redirect=redirect_to) }}"
+                                       class="btn btn-outline-green w-100 mb-3"
+                                       style="border: 2px solid #4caf50; color: #2e7d32; border-radius: 50px; padding: 12px; font-weight: 600; background: white;">
+                                        <i class="fas fa-user-plus me-2"></i>Create New Account
+                                    </a>
+
+                                    <div class="mt-4">
+                                        <a href="{{ url_for('index') }}" class="text-decoration-none">
+                                            <i class="fas fa-home me-1"></i>Back to Home
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle password visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this.querySelector('i');
+
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+
+                // Optional: Add animation effect
+                this.style.background = '#e8f5e9';
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+                this.style.background = 'white';
+            }
+        });
+
+        // Add smooth focus effects
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.querySelector('.input-group-text').style.borderColor = '#4caf50';
+            });
+
+            input.addEventListener('blur', function() {
+                this.parentElement.querySelector('.input-group-text').style.borderColor = '#e0e0e0';
+            });
+        });
+
+        // Optional: Add demo credentials for testing (remove in production)
+        // This helps users test the system
+        document.addEventListener('keydown', function(e) {
+            // Press Ctrl+Shift+D to fill demo credentials
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                document.getElementById('username').value = 'demo_farmer';
+                document.getElementById('password').value = 'Demo@123';
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Analytics - Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Analytics Dashboard</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Analytics</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <select class="form-select" onchange="changePeriod(this.value)">
+            <option value="7" {% if period =='7' %}selected{% endif %}>Last 7 Days</option>
+            <option value="30" {% if period =='30' or not period %}selected{% endif %}>Last 30 Days</option>
+            <option value="90" {% if period =='90' %}selected{% endif %}>Last 90 Days</option>
+        </select>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ total_diagnoses }}</div>
+            <div class="stat-label">Total Diagnoses</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ avg_daily_diagnoses }}</div>
+            <div class="stat-label">Avg Daily Diagnoses</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ user_distribution|length }}</div>
+            <div class="stat-label">User Types</div>
+        </div>
+    </div>
+</div>
+
+<!-- Simple User Distribution Table -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5>User Distribution</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>User Type</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in user_distribution %}
+                        <tr>
+                            <td>{{ item.user_type|title }}</td>
+                            <td><span class="badge bg-primary">{{ item.count }}</span></td>
+                            <td>{{ ((item.count / total_users * 100) if total_users > 0 else 0)|round(1) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5>Daily Diagnoses (Last {{ period }} days)</h5>
+            </div>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Diagnoses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in daily_diagnoses %}
+                        <tr>
+                            <td>{{ item.date }}</td>
+                            <td><span class="badge bg-primary">{{ item.diagnoses }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" class="text-center py-3">No data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Crops and Diseases -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5>Top Crops (Last {{ period }} days)</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Crop</th>
+                            <th>Diagnoses</th>
+                            <th>Avg Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for crop in top_crops %}
+                        <tr>
+                            <td>{{ crop.crop }}</td>
+                            <td><span class="badge bg-primary">{{ crop.count }}</span></td>
+                            <td>{{ crop.avg_confidence }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-3">No crop data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="table-container">
+            <div class="table-header">
+                <h5>Top Diseases (Last {{ period }} days)</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Disease</th>
+                            <th>Detections</th>
+                            <th>Avg Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disease in top_diseases %}
+                        <tr>
+                            <td>{{ disease.disease_detected }}</td>
+                            <td><span class="badge bg-primary">{{ disease.count }}</span></td>
+                            <td>{{ disease.avg_confidence }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-3">No disease data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Growth Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="table-header">
+                <h5>New Users (Last {{ period }} days)</h5>
+            </div>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>New Users</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in user_growth %}
+                        <tr>
+                            <td>{{ item.date }}</td>
+                            <td><span class="badge bg-success">{{ item.new_users }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" class="text-center py-3">No data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changePeriod(period) {
+    window.location.href = window.location.pathname + '?period=' + period;
+}
+</script>
+{% endblock %}

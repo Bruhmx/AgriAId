@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - AgriAid | Smart Farming Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Base Styles */
+        body {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #43a047 100%);
+            min-height: 100vh;
+            padding: 15px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Card - Responsive sizing */
+        .register-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 40, 0, 0.3);
+            max-width: 90%;
+            margin: 0 auto;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive card widths */
+        @media (min-width: 576px) {
+            .register-card {
+                max-width: 540px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .register-card {
+                max-width: 720px;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .register-card {
+                max-width: 800px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .register-card {
+                max-width: 850px;
+            }
+        }
+
+        /* Header - Responsive padding and font sizes */
+        .register-header {
+            background: linear-gradient(135deg, #1e7e34 0%, #2e7d32 50%, #1b5e20 100%);
+            color: white;
+            padding: 25px 20px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .register-header::before {
+            content: '\f06c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: 10px;
+            bottom: 5px;
+            font-size: 60px;
+            opacity: 0.1;
+            color: #fff;
+            transform: rotate(-10deg);
+        }
+
+        .register-header::after {
+            content: '\f185';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 10px;
+            top: 5px;
+            font-size: 50px;
+            opacity: 0.1;
+            color: #fff;
+            transform: rotate(15deg);
+        }
+
+        .register-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .register-header p {
+            font-size: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .register-header h1 {
+                font-size: 2.2rem;
+            }
+            .register-header p {
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .register-header h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Body - Responsive padding */
+        .register-body {
+            padding: 25px 20px;
+        }
+
+        @media (min-width: 768px) {
+            .register-body {
+                padding: 35px 30px;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .register-body {
+                padding: 40px 35px;
+            }
+        }
+
+        /* Step Indicator - Responsive */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+            padding: 0 10px;
+        }
+
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 30px;
+            right: 30px;
+            height: 2px;
+            background: linear-gradient(90deg, #c8e6c9, #81c784, #4caf50);
+            z-index: 1;
+            border-radius: 2px;
+        }
+
+        @media (min-width: 768px) {
+            .step-indicator::before {
+                top: 18px;
+                left: 40px;
+                right: 40px;
+            }
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            background: white;
+            padding: 0 8px;
+        }
+
+        .step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+            border: 2px solid #a5d6a7;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .step.active .step-circle {
+            background: linear-gradient(135deg, #2e7d32, #4caf50);
+            color: white;
+            border-color: #fff;
+            box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3);
+            transform: scale(1.05);
+        }
+
+        .step-label {
+            font-size: 11px;
+            color: #2e7d32;
+            font-weight: 600;
+            background: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        @media (min-width: 768px) {
+            .step-circle {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+            .step-label {
+                font-size: 12px;
+                padding: 3px 10px;
+            }
+        }
+
+        /* Form Sections */
+        .form-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Elements - Reduced size */
+        .form-label {
+            color: #1b5e20;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+        }
+
+        .input-group-text {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: #2e7d32;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #c8e6c9;
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            padding: 8px 12px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            height: auto;
+        }
+
+        @media (min-width: 768px) {
+            .form-control, .form-select {
+                padding: 10px 15px;
+                font-size: 0.95rem;
+            }
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+            outline: none;
+        }
+
+        .input-group:focus-within .input-group-text {
+            border-color: #4caf50;
+        }
+
+        .form-text {
+            color: #558b2f;
+            font-size: 0.75rem;
+            margin-top: 3px;
+            padding-left: 5px;
+        }
+
+        @media (min-width: 768px) {
+            .form-text {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Password Strength - Smaller */
+        .password-strength {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s, background-color 0.3s;
+            border-radius: 2px;
+        }
+
+        #passwordFeedback, #confirmFeedback {
+            font-size: 0.75rem;
+            margin-top: 3px;
+            padding-left: 5px;
+        }
+
+        /* Buttons - Smaller and responsive */
+        .btn-green {
+            background: linear-gradient(135deg, #2e7d32, #4caf50);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            font-weight: 600;
+            border-radius: 25px;
+            transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(46, 125, 50, 0.2);
+            font-size: 0.9rem;
+        }
+
+        .btn-green:hover {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+
+        .btn-outline-green {
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+            background: white;
+            padding: 8px 20px;
+            font-weight: 600;
+            border-radius: 25px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .btn-outline-green:hover {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border-color: #2e7d32;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-secondary {
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+            background: white;
+            border-radius: 0 8px 8px 0;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #e8f5e9;
+            border-color: #4caf50;
+            color: #1b5e20;
+        }
+
+        @media (min-width: 768px) {
+            .btn-green, .btn-outline-green {
+                padding: 10px 25px;
+                font-size: 1rem;
+            }
+        }
+
+        /* Checkbox - Smaller */
+        .form-check-input {
+            width: 1rem;
+            height: 1rem;
+            margin-top: 0.2rem;
+            border: 1px solid #c8e6c9;
+        }
+
+        .form-check-input:checked {
+            background-color: #4caf50;
+            border-color: #4caf50;
+        }
+
+        .form-check-label {
+            color: #2e7d32;
+            font-size: 0.85rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-check-label {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Links */
+        a {
+            color: #2e7d32;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        a:hover {
+            color: #1b5e20;
+            text-decoration: underline !important;
+        }
+
+        @media (min-width: 768px) {
+            a {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Alerts - Smaller */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border-left: 4px solid #4caf50;
+        }
+
+        .alert-danger {
+            background: #ffebee;
+            color: #b71c1c;
+            border-left: 4px solid #f44336;
+        }
+
+        /* Section Headers - Smaller */
+        .section-title {
+            color: #1b5e20;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-left: 4px solid #4caf50;
+            padding-left: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .section-title {
+                font-size: 1.5rem;
+                margin-bottom: 25px;
+            }
+        }
+
+        /* Row spacing - Reduced */
+        .row {
+            margin-bottom: 0;
+        }
+
+        .mb-3 {
+            margin-bottom: 0.8rem !important;
+        }
+
+        @media (min-width: 768px) {
+            .mb-3 {
+                margin-bottom: 1rem !important;
+            }
+        }
+
+        /* Button container spacing */
+        .mt-4 {
+            margin-top: 1.2rem !important;
+        }
+
+        /* Mobile First Adjustments */
+        @media (max-width: 576px) {
+            .register-card {
+                max-width: 95%;
+            }
+
+            .register-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .register-header p {
+                font-size: 0.9rem;
+            }
+
+            .step-indicator {
+                padding: 0 5px;
+            }
+
+            .step-indicator::before {
+                left: 20px;
+                right: 20px;
+            }
+
+            .step-circle {
+                width: 25px;
+                height: 25px;
+                font-size: 0.8rem;
+            }
+
+            .step-label {
+                font-size: 10px;
+                padding: 2px 5px;
+            }
+
+            .btn-green, .btn-outline-green {
+                padding: 7px 15px;
+                font-size: 0.85rem;
+            }
+
+            .form-control, .form-select {
+                padding: 7px 10px;
+            }
+
+            .input-group-text {
+                padding: 7px 10px;
+            }
+
+            .btn-outline-secondary {
+                padding: 7px 10px;
+            }
+
+            /* Stack buttons on mobile */
+            .d-flex.justify-content-between {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .d-flex.justify-content-between .btn,
+            .d-flex.justify-content-between a {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        /* Tablet Adjustments */
+        @media (min-width: 577px) and (max-width: 768px) {
+            .d-flex.justify-content-between {
+                gap: 15px;
+            }
+        }
+
+        /* Landscape orientation on mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                padding: 10px 0;
+            }
+
+            .register-header {
+                padding: 15px;
+            }
+
+            .register-header h1 {
+                font-size: 1.3rem;
+                margin-bottom: 5px;
+            }
+
+            .register-header p {
+                font-size: 0.85rem;
+            }
+
+            .step-indicator {
+                margin-bottom: 15px;
+            }
+
+            .register-body {
+                padding: 15px;
+            }
+        }
+
+        /* Small height screens */
+        @media (max-height: 600px) {
+            .register-card {
+                margin: 5px auto;
+            }
+
+            .mb-3 {
+                margin-bottom: 0.5rem !important;
+            }
+
+            .section-title {
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Remove floating animation to save space */
+        .register-card {
+            animation: none;
+        }
+
+        /* Better touch targets for mobile */
+        @media (max-width: 768px) {
+            .btn-green,
+            .btn-outline-green,
+            .btn-outline-secondary,
+            .form-control,
+            .form-select,
+            .input-group-text,
+            a {
+                min-height: 38px;
+            }
+
+            .form-check-input {
+                width: 1.2rem;
+                height: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="register-card">
+            <div class="register-header">
+                <h1 class="fw-bold">
+                    <i class="fas fa-seedling me-2"></i>AgriAid
+                </h1>
+                <p class="mb-0">Join our farming community</p>
+            </div>
+
+            <div class="register-body">
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" data-step="1">
+                        <div class="step-circle">1</div>
+                        <span class="step-label">Account</span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-circle">2</div>
+                        <span class="step-label">Profile</span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-circle">3</div>
+                        <span class="step-label">Ready</span>
+                    </div>
+                </div>
+
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+                    <!-- Hidden redirect field -->
+                    {% if redirect_to %}
+                    <input type="hidden" name="redirect" value="{{ redirect_to }}">
+                    {% endif %}
+
+                    <!-- Step 1: Account Information -->
+                    <div class="form-section active" id="step1">
+                        <h3 class="section-title">
+                            <i class="fas fa-user-plus me-2" style="color: #4caf50;"></i>Account
+                        </h3>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="username" name="username" required placeholder="Username">
+                                </div>
+                                <div class="form-text">4-20 chars, letters/numbers</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="email" name="email" required placeholder="your@email.com">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="password" name="password" required placeholder="Password">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword1">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="password-strength">
+                                    <div class="strength-bar" id="passwordStrength"></div>
+                                </div>
+                                <div class="form-text" id="passwordFeedback"></div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="confirm_password" class="form-label">Confirm *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Confirm">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword2">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text" id="confirmFeedback"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('login', redirect=redirect_to) }}" class="btn btn-outline-green">
+                                <i class="fas fa-arrow-left me-1"></i>Login
+                            </a>
+                            <button type="button" class="btn btn-green" onclick="nextStep(2)">
+                                Next <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Profile Information -->
+                    <div class="form-section" id="step2">
+                        <h3 class="section-title">
+                            <i class="fas fa-leaf me-2" style="color: #4caf50;"></i>Profile
+                        </h3>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="full_name" class="form-label">Full Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                    <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Your name">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="user_type" class="form-label">I am a *</label>
+                                <select class="form-select" id="user_type" name="user_type" required>
+                                    <option value="farmer" selected>🌾 Farmer</option>
+                                    <option value="researcher">🔬 Researcher</option>
+                                    <option value="student">📚 Student</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="+1234567890">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="location" class="form-label">Location</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                    <input type="text" class="form-control" id="location" name="location" placeholder="City, Country">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    I agree to <a href="/terms">Terms</a> & <a href="/privacy">Privacy</a>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-green" onclick="prevStep(1)">
+                                <i class="fas fa-arrow-left me-1"></i>Back
+                            </button>
+                            <button type="submit" class="btn btn-green">
+                                <i class="fas fa-user-plus me-1"></i>Register
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Footer links -->
+                <div class="text-center mt-4">
+                    <p class="mb-2 small">
+                        <a href="{{ url_for('login', redirect=redirect_to) }}" class="fw-bold">
+                            Already have an account?
+                        </a>
+                    </p>
+                    <a href="{{ url_for('index') }}" class="small">
+                        <i class="fas fa-home me-1"></i>Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript remains exactly the same -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Your existing JavaScript - 100% unchanged
+        let currentStep = 1;
+
+        function showStep(step) {
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.step').forEach(stepEl => {
+                stepEl.classList.remove('active');
+            });
+
+            document.getElementById(`step${step}`).classList.add('active');
+            document.querySelector(`.step[data-step="${step}"]`).classList.add('active');
+            currentStep = step;
+        }
+
+        function nextStep(step) {
+            if (currentStep === 1) {
+                const username = document.getElementById('username').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const confirm = document.getElementById('confirm_password').value;
+
+                if (!username || !email || !password || !confirm) {
+                    alert('Please fill all required fields');
+                    return;
+                }
+
+                if (username.length < 4 || username.length > 20) {
+                    alert('Username must be 4-20 characters');
+                    return;
+                }
+
+                if (!validateEmail(email)) {
+                    alert('Please enter a valid email address');
+                    return;
+                }
+
+                if (password.length < 8) {
+                    alert('Password must be at least 8 characters');
+                    return;
+                }
+
+                if (password !== confirm) {
+                    alert('Passwords do not match');
+                    return;
+                }
+            }
+
+            showStep(step);
+        }
+
+        function prevStep(step) {
+            showStep(step);
+        }
+
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            const strengthBar = document.getElementById('passwordStrength');
+            const feedback = document.getElementById('passwordFeedback');
+
+            let strength = 0;
+            let feedbackText = '';
+            let color = '#dc3545';
+
+            if (password.length >= 8) strength += 25;
+            if (/[A-Z]/.test(password)) strength += 25;
+            if (/[a-z]/.test(password)) strength += 25;
+            if (/[0-9]/.test(password)) strength += 25;
+
+            strengthBar.style.width = `${strength}%`;
+
+            if (strength < 50) {
+                color = '#dc3545';
+                feedbackText = 'Weak';
+            } else if (strength < 75) {
+                color = '#ffc107';
+                feedbackText = 'Moderate';
+            } else {
+                color = '#28a745';
+                feedbackText = 'Strong';
+            }
+
+            strengthBar.style.backgroundColor = color;
+            feedback.textContent = feedbackText;
+            feedback.style.color = color;
+        });
+
+        document.getElementById('confirm_password').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirm = this.value;
+            const feedback = document.getElementById('confirmFeedback');
+
+            if (confirm === '') {
+                feedback.textContent = '';
+            } else if (password === confirm) {
+                feedback.textContent = '✓ Match';
+                feedback.style.color = '#28a745';
+            } else {
+                feedback.textContent = '✗ No match';
+                feedback.style.color = '#dc3545';
+            }
+        });
+
+        ['togglePassword1', 'togglePassword2'].forEach(id => {
+            document.getElementById(id).addEventListener('click', function() {
+                const targetId = id === 'togglePassword1' ? 'password' : 'confirm_password';
+                const password = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+
+                if (password.type === 'password') {
+                    password.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    password.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            const terms = document.getElementById('terms');
+            if (!terms.checked) {
+                e.preventDefault();
+                alert('Please agree to Terms & Privacy');
+                return;
+            }
+
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm_password').value;
+            const userType = document.getElementById('user_type').value;
+
+            if (!username || !email || !password || !confirm || !userType) {
+                e.preventDefault();
+                alert('Please fill all required fields');
+                return;
+            }
+
+            if (password !== confirm) {
+                e.preventDefault();
+                alert('Passwords do not match');
+                return;
+            }
+
+            if (password.length < 8) {
+                e.preventDefault();
+                alert('Password must be at least 8 characters');
+                return;
+            }
+        });
+    </script>
+</body>
+</html>

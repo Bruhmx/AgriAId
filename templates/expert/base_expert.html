@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Expert Panel{% endblock %} - AgriAId</title>
+    <!-- Add this in your base_expert.html head section -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --expert-primary: #6f42c1;
+            --expert-dark: #5a32a3;
+            --expert-light: #e2d5f7;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .expert-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--expert-primary) 0%, var(--expert-dark) 100%);
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .expert-profile {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--expert-primary);
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+
+        .profile-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .profile-role {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            background: rgba(255,255,255,0.1);
+            padding: 0.25rem 1rem;
+            border-radius: 20px;
+        }
+
+        .sidebar-nav {
+            padding: 1.5rem 0;
+        }
+
+        .nav-section {
+            padding: 0 1rem;
+            margin: 1.5rem 0 0.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .nav-item {
+            list-style: none;
+            margin: 0.25rem 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-left-color: white;
+        }
+
+        .nav-link i {
+            width: 24px;
+            font-size: 1.1rem;
+            margin-right: 0.75rem;
+        }
+
+        .expert-main {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(111, 66, 193, 0.15);
+        }
+
+        .badge-expert {
+            background-color: var(--expert-light);
+            color: var(--expert-primary);
+        }
+
+        @media (max-width: 768px) {
+            .expert-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            .expert-sidebar.show {
+                transform: translateX(0);
+            }
+            .expert-main {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <aside class="expert-sidebar" id="expertSidebar">
+        <div class="sidebar-header">
+            <h3>AgriAId</h3>
+            <p>Expert Panel</p>
+        </div>
+
+        <div class="expert-profile">
+            <div class="profile-avatar">
+                {% if session.profile_image %}
+                <img src="/static/uploads/profiles/{{ session.profile_image }}"
+                     style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                {% else %}
+                <i class="fas fa-user-md"></i>
+                {% endif %}
+            </div>
+            <div class="profile-name">{{ session.full_name or session.username }}</div>
+            <div class="profile-role">Agricultural Expert</div>
+        </div>
+
+        <ul class="sidebar-nav">
+    <li class="nav-section">Main</li>
+    <li class="nav-item">
+        <a href="{{ url_for('expert_dashboard') }}"
+           class="nav-link {% if request.endpoint == 'expert_dashboard' %}active{% endif %}">
+            <i class="fas fa-home"></i>Dashboard
+        </a>
+    </li>
+
+    <li class="nav-section">Disease Management</li>
+    <li class="nav-item">
+        <a href="{{ url_for('expert_diseases') }}"
+           class="nav-link {% if request.endpoint == 'expert_diseases' %}active{% endif %}">
+            <i class="fas fa-disease"></i>Disease Library
+        </a>
+    </li>
+
+    <li class="nav-section">Diagnosis Review</li>
+    <li class="nav-item">
+        <a href="{{ url_for('expert_pending_reviews') }}"
+           class="nav-link {% if request.endpoint == 'expert_pending_reviews' %}active{% endif %}">
+            <i class="fas fa-clock"></i>Pending Reviews
+            {% if pending_count > 0 %}
+            <span class="badge bg-warning ms-auto">{{ pending_count }}</span>
+            {% endif %}
+        </a>
+    </li>
+    <!-- In templates/expert/base_expert.html, add this to the navigation -->
+    <li class="nav-section">Questions</li>
+    <li class="nav-item">
+        <a href="{{ url_for('expert_questions') }}"
+           class="nav-link {% if request.endpoint in ['expert_questions', 'expert_add_question', 'expert_edit_question'] %}active{% endif %}">
+            <i class="fas fa-question-circle"></i> Manage Questions
+        </a>
+    </li>
+
+    <li class="nav-section">Account</li>
+    <li class="nav-item">
+        <a href="{{ url_for('expert_settings') }}" class="nav-link {% if request.endpoint == 'expert_settings' %}active{% endif %}">
+            <i class="fas fa-cog"></i>Settings
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="{{ url_for('logout') }}" class="nav-link text-danger">
+            <i class="fas fa-sign-out-alt"></i>Logout
+        </a>
+    </li>
+</ul>
+    </aside>
+
+    <main class="expert-main">
+        <button class="btn btn-primary d-md-none mb-3" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i> Menu
+        </button>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('expertSidebar').classList.toggle('show');
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

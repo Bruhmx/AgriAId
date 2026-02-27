@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}FAQ - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold mb-3">
+                    <i class="fas fa-question-circle text-primary me-2"></i>Frequently Asked Questions
+                </h1>
+                <p class="lead text-muted">Find answers to common questions about AgriAId</p>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" class="form-control border-0 bg-light" id="faqSearch" placeholder="Search FAQs..." onkeyup="searchFAQ()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ Categories -->
+            <div class="row g-4">
+                <!-- General Questions -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-primary text-white py-3">
+                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>General Questions</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="accordion" id="faqGeneral">
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                            <strong>What is AgriAId?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqGeneral">
+                                        <div class="accordion-body">
+                                            AgriAId is an AI-powered platform that helps farmers and gardeners detect plant diseases through image recognition. Simply upload a photo of your plant, and our system will identify potential diseases and provide treatment recommendations.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                            <strong>Is AgriAId free to use?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqGeneral">
+                                        <div class="accordion-body">
+                                            Yes, AgriAId is completely free for all users. We believe in making agricultural technology accessible to everyone.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                            <strong>Do I need to create an account?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqGeneral">
+                                        <div class="accordion-body">
+                                            Yes, creating an account allows you to save your diagnosis history, bookmark important results, and track your plant health over time. Registration is quick and free.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Using the Service -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-success text-white py-3">
+                            <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Using the Service</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="accordion" id="faqUsage">
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                            <strong>How do I diagnose a plant disease?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq4" class="accordion-collapse collapse show" data-bs-parent="#faqUsage">
+                                        <div class="accordion-body">
+                                            Simply click "Diagnose" or "Upload Image", take or select a clear photo of the affected plant, and submit it. Our AI will analyze the image and provide results within seconds. To really make sure the accuracy we have several questions to ask related to symptoms, field and environment.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                            <strong>What plants/crops does it work for?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqUsage">
+                                        <div class="accordion-body">
+                                            Our system currently supports major crops including corn, and rice. We're continuously adding new crops to our database.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                                            <strong>How accurate are the diagnoses?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqUsage">
+                                        <div class="accordion-body">
+                                            Our AI model achieves 85-95% accuracy for supported diseases. We always show confidence scores with each diagnosis. For critical cases, we recommend consulting with local agricultural experts.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7">
+                                            <strong>What image format is best?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqUsage">
+                                        <div class="accordion-body">
+                                            JPEG, PNG, or GIF formats work best. Ensure good lighting, focus on the affected areas, and include healthy parts for comparison. Maximum file size is 10MB.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account & Technical -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-info text-white py-3">
+                            <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Account & Technical</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="accordion" id="faqAccount">
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#faq8">
+                                            <strong>How do I reset my password?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq8" class="accordion-collapse collapse show" data-bs-parent="#faqAccount">
+                                        <div class="accordion-body">
+                                            Go to Settings → Account tab, and use the "Change Password" section. If you're locked out, click "Forgot Password" on the login page.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq9">
+                                            <strong>Can I delete my account?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq9" class="accordion-collapse collapse" data-bs-parent="#faqAccount">
+                                        <div class="accordion-body">
+                                            Yes, go to Settings → Danger Zone, and click "Delete My Account". This will permanently remove all your data.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button bg-light rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq10">
+                                            <strong>Is my data secure?</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="faq10" class="accordion-collapse collapse" data-bs-parent="#faqAccount">
+                                        <div class="accordion-body">
+                                            Yes, we use industry-standard encryption, secure password hashing, and follow strict data protection practices. We never sell your personal information.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Still have questions -->
+                <div class="col-12">
+                    <div class="card bg-light border-0 text-center py-4">
+                        <div class="card-body">
+                            <h5 class="mb-3">Still have questions?</h5>
+                            <p class="text-muted mb-3">Can't find the answer you're looking for? Contact our support team.</p>
+                            <a href="/contact" class="btn btn-primary">
+                                <i class="fas fa-envelope me-2"></i>Contact Support
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Simple search function
+function searchFAQ() {
+    let input = document.getElementById('faqSearch').value.toLowerCase();
+    let items = document.querySelectorAll('.accordion-item');
+
+    items.forEach(item => {
+        let text = item.textContent.toLowerCase();
+        if (text.includes(input) || input === '') {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+</script>
+
+<style>
+.accordion-button:not(.collapsed) {
+    background-color: #e8f5e9 !important;
+    color: #2e7d32 !important;
+    box-shadow: none;
+}
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0,0,0,.125);
+}
+</style>
+{% endblock %}

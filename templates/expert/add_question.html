@@ -1,0 +1,85 @@
+{% extends "expert/base_expert.html" %}
+
+{% block title %}Add Question{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Add New Question</h1>
+    <a href="{{ url_for('expert_questions') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Questions
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Question Details</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('expert_add_question') }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Crop <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="crop" list="cropList" required
+                           placeholder="e.g., corn, rice" value="{{ prefill.crop if prefill and prefill.crop else '' }}">
+                    <datalist id="cropList">
+                        {% for crop in crops %}
+                        <option value="{{ crop }}">
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Disease Code <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="disease_code" list="diseaseList" required
+                           placeholder="e.g., Common_Rust, blast" value="{{ prefill.disease_code if prefill and prefill.disease_code else '' }}">
+                    <datalist id="diseaseList">
+                        {% for disease in diseases %}
+                        <option value="{{ disease }}">
+                        {% endfor %}
+                    </datalist>
+                    <small class="text-muted">Use underscore for spaces (e.g., common_rust)</small>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Question Text <span class="text-danger">*</span></label>
+                <textarea class="form-control" name="question_text" rows="3" required
+                          placeholder="Enter the diagnostic question...">{{ prefill.question_text if prefill and prefill.question_text else '' }}</textarea>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
+                    <select class="form-select" name="question_category" required>
+                        <option value="">Select Category</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}"
+                                {% if prefill and prefill.question_category == category %}selected{% endif %}>
+                            {{ category|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Display Order</label>
+                    <input type="number" class="form-control" name="display_order"
+                           value="{{ prefill.display_order if prefill and prefill.display_order else 0 }}"
+                           min="0" step="1">
+                    <small class="text-muted">Lower numbers appear first in the diagnostic process</small>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Tip:</strong> Questions with lower display order appear first in the diagnostic process.
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Question
+            </button>
+            <a href="{{ url_for('expert_questions') }}" class="btn btn-secondary ms-2">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

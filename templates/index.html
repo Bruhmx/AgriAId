@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Home - AI Crop Disease Detection{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Hero Section -->
+        <div class="hero-section card border-0 mb-5">
+            <div class="card-body p-5 text-center">
+                <div class="mb-4">
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 mb-3">
+                        <i class="fas fa-brain me-2"></i>AI-First Detection
+                    </span>
+                    <h1 class="display-4 fw-bold text-dark mb-3">AgriAId</h1>
+                    <p class="lead text-muted mb-4">Instant AI Disease Detection with Optional Expert Validation</p>
+                </div>
+
+                <!-- New Flow Visualization -->
+                <div class="flow-visualization mb-5 p-4 bg-white bg-opacity-50 rounded-4">
+                    <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+                        <div class="flow-step">
+                            <div class="flow-icon bg-primary text-white">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                            <span class="small fw-bold">Upload/Capture</span>
+                        </div>
+                        <div class="flow-arrow">
+                            <i class="fas fa-arrow-right fa-2x text-primary"></i>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-icon bg-success text-white">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <span class="small fw-bold">AI Detection</span>
+                        </div>
+                        <div class="flow-arrow">
+                            <i class="fas fa-arrow-right fa-2x text-primary"></i>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-icon bg-warning text-white">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <span class="small fw-bold">Results + Alternatives</span>
+                        </div>
+                        <div class="flow-arrow optional-arrow">
+                            <i class="fas fa-arrow-down fa-2x text-secondary d-block d-md-none"></i>
+                            <i class="fas fa-arrow-right fa-2x text-secondary d-none d-md-block"></i>
+                        </div>
+                        <div class="flow-step optional-step">
+                            <div class="flow-icon bg-info text-white">
+                                <i class="fas fa-question-circle"></i>
+                            </div>
+                            <span class="small fw-bold">Optional Questions</span>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary mt-1">Refinement</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Grid - Updated -->
+                <div class="row g-4 mb-5">
+                    <div class="col-md-4">
+                        <div class="feature-card card border-0 h-100">
+                            <div class="card-body text-center p-4">
+                                <div class="feature-icon mb-3">
+                                    <div class="icon-circle bg-primary bg-opacity-10 text-primary">
+                                        <i class="fas fa-robot fa-2x"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title text-dark mb-2">Primary AI Detection</h5>
+                                <p class="card-text text-muted small">Advanced deep learning models instantly identify diseases from leaf images.</p>
+                                <span class="badge bg-primary bg-opacity-10 text-primary mt-2">Instant Results</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="feature-card card border-0 h-100">
+                            <div class="card-body text-center p-4">
+                                <div class="feature-icon mb-3">
+                                    <div class="icon-circle bg-success bg-opacity-10 text-success">
+                                        <i class="fas fa-clipboard-list fa-2x"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title text-dark mb-2">Multiple Possibilities</h5>
+                                <p class="card-text text-muted small">View primary diagnosis along with other possible disease matches.</p>
+                                <span class="badge bg-success bg-opacity-10 text-success mt-2">Comprehensive View</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="feature-card card border-0 h-100">
+                            <div class="card-body text-center p-4">
+                                <div class="feature-icon mb-3">
+                                    <div class="icon-circle bg-warning bg-opacity-10 text-warning">
+                                        <i class="fas fa-user-md fa-2x"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title text-dark mb-2">Optional Validation</h5>
+                                <p class="card-text text-muted small">Answer follow-up questions to refine diagnosis when you need extra certainty.</p>
+                                <span class="badge bg-warning bg-opacity-10 text-warning mt-2">When Needed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CTA Buttons -->
+                <div class="d-grid gap-3 d-md-flex justify-content-center">
+                    <a href="/upload" class="btn btn-success btn-lg px-5 py-3">
+                        <i class="fas fa-camera me-2"></i>Detect Disease Now
+                    </a>
+                    <a href="/about" class="btn btn-outline-primary btn-lg px-5 py-3">
+                        <i class="fas fa-info-circle me-2"></i>How It Works
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works - Updated Flow -->
+        <div class="card mb-5">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-cogs me-2"></i>Simple 3-Step Process</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="process-steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h6>Upload Photo</h6>
+                            <p class="small text-muted mb-0">Capture or upload a clear image of affected leaves</p>
+                        </div>
+                    </div>
+                    <div class="step-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h6>AI Analysis</h6>
+                            <p class="small text-muted mb-0">Get instant disease detection from our AI model</p>
+                            <span class="badge bg-success bg-opacity-10 text-success mt-1">Primary Result</span>
+                        </div>
+                    </div>
+                    <div class="step-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h6>Review & Refine</h6>
+                            <p class="small text-muted mb-0">View all possible diseases and optionally answer questions</p>
+                            <span class="badge bg-info bg-opacity-10 text-info mt-1">Optional Refinement</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supported Crops & Features -->
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-seedling me-2"></i>Supported Crops</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="crop-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="crop-icon bg-success bg-opacity-10 text-success rounded-circle p-3 me-3">
+                                    <i class="fas fa-corn"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Corn (Maize)</h6>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">Common Rust</span>
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">Gray Leaf Spot</span>
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">Northern Blight</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="crop-item">
+                            <div class="d-flex align-items-center">
+                                <div class="crop-icon bg-info bg-opacity-10 text-info rounded-circle p-3 me-3">
+                                    <i class="fas fa-rice"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Rice</h6>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25">Rice Blast</span>
+                                        <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25">Bacterial Blight</span>
+                                        <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25">Brown Spot</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-star me-2"></i>Key Features</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-bolt text-primary me-3"></i>
+                                    <span><strong>Instant AI detection</strong> from leaf images</span>
+                                </div>
+                            </li>
+                            <li class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-list-ul text-success me-3"></i>
+                                    <span><strong>Multiple disease possibilities</strong> for comprehensive analysis</span>
+                                </div>
+                            </li>
+                            <li class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-question-circle text-info me-3"></i>
+                                    <span><strong>Optional expert questions</strong> for diagnosis refinement</span>
+                                </div>
+                            </li>
+                            <li class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-chart-line text-warning me-3"></i>
+                                    <span><strong>Severity assessment</strong> and progression tracking</span>
+                                </div>
+                            </li>
+                            <li class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-flask text-danger me-3"></i>
+                                    <span><strong>Treatment recommendations</strong> - organic & chemical</span>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-shield-alt text-secondary me-3"></i>
+                                    <span><strong>Prevention strategies</strong> for future crops</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optional Questions Info Banner -->
+        <div class="alert alert-info bg-info bg-opacity-10 border-info mt-4 mb-0">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
+                <div>
+                    <strong>Questions are optional!</strong> Our AI provides instant results based on image analysis. Answer follow-up questions only if you want to refine the diagnosis further.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e6f7e6 100%);
+    border-radius: 24px;
+}
+
+.feature-card {
+    transition: transform 0.3s ease;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.05) !important;
+}
+
+.feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+}
+
+.icon-circle {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover .icon-circle {
+    transform: scale(1.1);
+}
+
+.process-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.step {
+    flex: 1;
+    min-width: 150px;
+    text-align: center;
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary-green) 0%, #4caf50 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin: 0 auto 1rem;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.step-content h6 {
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+.step-arrow {
+    color: #4caf50;
+    font-size: 1.5rem;
+}
+
+/* New Flow Visualization Styles */
+.flow-visualization {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 100px;
+}
+
+.flow-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.optional-step .flow-icon {
+    opacity: 0.8;
+}
+
+.optional-arrow {
+    color: #6c757d;
+}
+
+.crop-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .process-steps {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .step-arrow {
+        transform: rotate(90deg);
+    }
+
+    .flow-visualization .d-flex {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

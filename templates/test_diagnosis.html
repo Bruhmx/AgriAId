@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Test Diagnosis View{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Debug Diagnosis Data</h3>
+                </div>
+                <div class="card-body">
+                    <h4>Result Variable Contents:</h4>
+                    <pre>{{ result | tojson(indent=2) }}</pre>
+
+                    <hr>
+
+                    <h4>Individual Fields:</h4>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>ID</th>
+                            <td>{{ result.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Disease</th>
+                            <td>{{ result.disease }}</td>
+                        </tr>
+                        <tr>
+                            <th>Crop</th>
+                            <td>{{ result.crop }}</td>
+                        </tr>
+                        <tr>
+                            <th>Confidence</th>
+                            <td>{{ result.confidence }}</td>
+                        </tr>
+                        <tr>
+                            <th>Symptoms</th>
+                            <td>{{ result.symptoms }}</td>
+                        </tr>
+                        <tr>
+                            <th>Recommendations</th>
+                            <td>{{ result.recommendations }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created At</th>
+                            <td>{{ result.created_at }}</td>
+                        </tr>
+                        <tr>
+                            <th>Final Confidence Level</th>
+                            <td>{{ result.final_confidence_level }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>Image Test</h4>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('diagnosis_image', diagnosis_id=result.id) }}"
+                         class="img-fluid"
+                         style="max-height: 300px;"
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/300?text=Image+Error'">
+                    <p class="mt-2">Image URL: {{ url_for('diagnosis_image', diagnosis_id=result.id) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('my_diagnoses') }}" class="btn btn-primary">Back to History</a>
+            <a href="{{ url_for('view_diagnosis', diagnosis_id=result.id) }}" class="btn btn-secondary">Refresh</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

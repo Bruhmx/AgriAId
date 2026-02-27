@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Image - AgriAId{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-cloud-upload-alt me-2"></i>Upload or Scan Crop Image</h4>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
+                    <!-- Upload Method Selection -->
+                    <div class="mb-4">
+                        <div class="btn-group w-100" role="group" id="uploadMethod">
+                            <input type="radio" class="btn-check" name="uploadMethod" id="methodGallery" value="gallery" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary" for="methodGallery">
+                                <i class="fas fa-folder-open me-2"></i>Gallery
+                            </label>
+
+                            <input type="radio" class="btn-check" name="uploadMethod" id="methodCamera" value="camera" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="methodCamera">
+                                <i class="fas fa-camera me-2"></i>Take Photo
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Upload Section (Default) -->
+                    <div id="gallerySection">
+                        <div class="mb-4 text-center">
+                            <div class="border-dashed p-5 rounded-3" style="border: 2px dashed #ddd;">
+                                <i class="fas fa-image fa-4x text-muted mb-3"></i>
+                                <h5>Select Leaf Image</h5>
+                                <p class="text-muted mb-3">Supported formats: JPG, PNG, JPEG</p>
+
+                                <!-- Hidden file input -->
+                                <input type="file" class="form-control d-none" id="image" name="image" accept=".jpg,.jpeg,.png" required onchange="previewGalleryImage(event)">
+
+                                <!-- Upload Button -->
+                                <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('image').click()">
+                                    <i class="fas fa-folder-open me-2"></i>Browse Gallery
+                                </button>
+
+                                <p class="small text-muted mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Or drag & drop image here
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- IMPROVED CAMERA SECTION - Mobile Optimized -->
+                    <div id="cameraSection" style="display: none;">
+                        <div class="mb-4 text-center">
+                            <div class="border-dashed p-3 p-md-5 rounded-3" style="border: 2px dashed #ddd;">
+                                <i class="fas fa-camera fa-3x fa-4x-md text-muted mb-3"></i>
+                                <h5>Take Photo of Leaf</h5>
+
+                                <!-- Camera Preview Container -->
+                                <div class="camera-container mb-3" style="display: none; position: relative;">
+                                    <video id="cameraPreview" autoplay playsinline style="width: 100%; max-height: 400px; background: #000; border-radius: 10px;"></video>
+                                    <canvas id="cameraCanvas" style="display: none;"></canvas>
+
+                                    <!-- Camera Controls Overlay (Mobile-friendly) -->
+                                    <div class="camera-overlay" style="position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; gap: 20px;">
+                                        <button type="button" class="btn btn-light btn-lg rounded-circle" id="mobileCaptureBtn" style="width: 70px; height: 70px; display: none;">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Switch Camera Button (Mobile) -->
+                                    <button type="button" class="btn btn-sm btn-dark position-absolute top-0 end-0 m-3" id="switchCameraBtn" style="display: none;">
+                                        <i class="fas fa-sync-alt me-2"></i>Switch
+                                    </button>
+                                </div>
+
+                                <!-- Desktop Camera Controls -->
+                                <div class="btn-group btn-group-lg w-100" role="group" id="desktopCameraControls">
+                                    <button type="button" class="btn btn-success" id="startCameraBtn">
+                                        <i class="fas fa-camera me-2"></i>Start Camera
+                                    </button>
+                                    <button type="button" class="btn btn-warning" id="captureBtn" style="display: none;">
+                                        <i class="fas fa-camera me-2"></i>Capture
+                                    </button>
+                                </div>
+
+                                <!-- Mobile Camera Controls -->
+                                <div class="mobile-camera-controls" style="display: none;">
+                                    <p class="text-muted small mb-3">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Tap the camera button above to capture
+                                    </p>
+                                </div>
+
+                                <!-- Fallback file input -->
+                                <input type="file" id="cameraFileInput" accept="image/*" capture="environment" style="display: none;">
+                                <input type="hidden" id="cameraData" name="cameraData">
+
+                                <!-- Camera Permission Message -->
+                                <div id="cameraPermissionMsg" class="alert alert-warning mt-3" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Camera access denied.
+                                    <button type="button" class="btn btn-sm btn-warning mt-2" onclick="document.getElementById('cameraFileInput').click()">
+                                        Choose from Gallery
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Image Summary -->
+                    <div id="imageSummary" class="card mb-4" style="display: none;">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>Image Ready for Analysis</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 text-center">
+                                    <img id="summaryImage" src="" alt="Selected Image" class="img-fluid rounded shadow" style="max-height: 150px; border: 3px solid #28a745;">
+                                </div>
+                                <div class="col-md-8">
+                                    <h6 class="text-success">Image Preview</h6>
+                                    <p class="small text-muted mb-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Click "Analyze Image" below to begin disease diagnosis
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeImage()">
+                                            <i class="fas fa-exchange-alt me-1"></i>Change Image
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="zoomPreview()">
+                                            <i class="fas fa-search-plus me-1"></i>Zoom
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showCaptureTips()">
+                                            <i class="fas fa-lightbulb me-1"></i>Tips
+                                        </button>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Size: <span id="imageSize">0 KB</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tips Card -->
+                    <div class="card mb-4" id="tipsCard">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-lightbulb me-2 text-warning"></i>Tips for Best Results</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li><i class="fas fa-sun text-warning me-2"></i>Good lighting</li>
+                                        <li><i class="fas fa-crosshairs text-info me-2"></i>Focus on affected leaves</li>
+                                        <li><i class="fas fa-leaf text-success me-2"></i>Multiple leaves if possible</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li><i class="fas fa-expand-alt text-primary me-2"></i>Fill the frame</li>
+                                        <li><i class="fas fa-ban text-danger me-2"></i>Avoid blurry images</li>
+                                        <li><i class="fas fa-ruler-combined text-secondary me-2"></i>Include scale if severe</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                            <i class="fas fa-search me-2"></i>Analyze Image
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Home
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imagePreviewModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modalPreviewImage" src="" alt="Preview" class="img-fluid rounded">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary" onclick="downloadPreview()">
+                    <i class="fas fa-download me-2"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Capture Tips Modal -->
+<div class="modal fade" id="captureTipsModal" tabindex="-1" aria-labelledby="captureTipsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-white" id="captureTipsModalLabel">
+                    <i class="fas fa-lightbulb me-2"></i>Image Capture Tips
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-primary">For Best Results:</h6>
+                        <ul class="mb-3">
+                            <li><strong>Lighting:</strong> Natural daylight, avoid shadows</li>
+                            <li><strong>Focus:</strong> Clear focus on leaf details</li>
+                            <li><strong>Angle:</strong> Directly above the leaf</li>
+                            <li><strong>Background:</strong> Neutral color (avoid soil/hands)</li>
+                            <li><strong>Multiple leaves:</strong> Include 2-3 affected leaves</li>
+                        </ul>
+                        <div class="alert alert-info small">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Tip:</strong> Place leaf on white paper for better contrast
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+// Global variables
+let cameraStream = null;
+let isCameraActive = false;
+let currentImageSource = null;
+let currentImageData = null;
+let currentFacingMode = 'environment'; // Start with back camera
+
+// Mobile detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Mobile-specific UI adjustments
+    if (isMobile) {
+        document.querySelector('.mobile-camera-controls').style.display = 'block';
+        document.getElementById('desktopCameraControls').style.display = 'none';
+        document.getElementById('switchCameraBtn').style.display = 'block';
+        document.getElementById('mobileCaptureBtn').style.display = 'flex';
+    }
+
+    // Upload method selection
+    document.querySelectorAll('input[name="uploadMethod"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const method = this.value;
+
+            if (method === 'gallery') {
+                document.getElementById('gallerySection').style.display = 'block';
+                document.getElementById('cameraSection').style.display = 'none';
+                stopCamera();
+                resetCameraUI();
+                hideImageSummary();
+            } else if (method === 'camera') {
+                document.getElementById('gallerySection').style.display = 'none';
+                document.getElementById('cameraSection').style.display = 'block';
+                hideImageSummary();
+            }
+        });
+    });
+
+    // Drag and drop for gallery
+    const gallerySection = document.getElementById('gallerySection');
+    gallerySection.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        gallerySection.style.opacity = '0.8';
+    });
+
+    gallerySection.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        gallerySection.style.opacity = '1';
+    });
+
+    gallerySection.addEventListener('drop', (e) => {
+        e.preventDefault();
+        gallerySection.style.opacity = '1';
+
+        if (e.dataTransfer.files.length) {
+            const file = e.dataTransfer.files[0];
+            if (file.type.startsWith('image/')) {
+                const fileInput = document.getElementById('image');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                previewGalleryImage({ target: { files: [file] } });
+                showToast('Image dropped successfully!', 'success');
+            } else {
+                showToast('Please drop an image file only', 'warning');
+            }
+        }
+    });
+
+    // Start camera - Improved for mobile
+    document.getElementById('startCameraBtn')?.addEventListener('click', startCamera);
+
+    // Mobile capture button
+    document.getElementById('mobileCaptureBtn')?.addEventListener('click', capturePhoto);
+
+    // Desktop capture button
+    document.getElementById('captureBtn')?.addEventListener('click', capturePhoto);
+
+    // Switch camera button
+    document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
+
+    // Form submission
+    document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('image');
+
+        if (!currentImageData && !fileInput.files.length) {
+            e.preventDefault();
+            showToast('Please select or capture an image first!', 'warning');
+            return false;
+        }
+
+        if (currentImageSource === 'camera' && currentImageData) {
+            const base64Data = currentImageData.split(',')[1];
+            const binaryData = atob(base64Data);
+            const arrayBuffer = new ArrayBuffer(binaryData.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            for (let i = 0; i < binaryData.length; i++) {
+                uint8Array[i] = binaryData.charCodeAt(i);
+            }
+
+            const blob = new Blob([uint8Array], { type: 'image/jpeg' });
+            const fileName = 'camera_capture_' + Date.now() + '.jpg';
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const metadataInput = document.createElement('input');
+            metadataInput.type = 'hidden';
+            metadataInput.name = 'camera_metadata';
+            metadataInput.value = JSON.stringify({
+                source: 'camera',
+                timestamp: new Date().toISOString()
+            });
+            this.appendChild(metadataInput);
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        submitBtn.disabled = true;
+    });
+
+    // Clean up camera
+    window.addEventListener('beforeunload', stopCamera);
+    window.addEventListener('pagehide', stopCamera);
+});
+
+// ========== CAMERA FUNCTIONS ==========
+async function startCamera() {
+    try {
+        // Check for iOS HTTPS requirement
+        if (isIOS && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            showToast('Camera requires HTTPS on iOS. Using gallery instead.', 'warning');
+            document.getElementById('cameraFileInput').click();
+            return;
+        }
+
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Request camera with mobile-optimized constraints
+        const constraints = {
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: isMobile ? 1080 : 1280 },
+                height: { ideal: isMobile ? 1920 : 720 },
+                aspectRatio: isMobile ? { ideal: 9/16 } : { ideal: 16/9 }
+            },
+            audio: false
+        };
+
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        const video = document.getElementById('cameraPreview');
+        video.srcObject = cameraStream;
+
+        // On iOS, ensure video plays
+        if (isIOS) {
+            video.setAttribute('playsinline', true);
+            await video.play();
+        }
+
+        document.querySelector('.camera-container').style.display = 'block';
+        document.getElementById('startCameraBtn').style.display = 'none';
+
+        if (isMobile) {
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('mobileCaptureBtn').style.display = 'flex';
+        } else {
+            document.getElementById('captureBtn').style.display = 'block';
+        }
+
+        isCameraActive = true;
+        showToast('Camera ready! Tap to capture.', 'success');
+        document.getElementById('cameraPermissionMsg').style.display = 'none';
+
+    } catch (error) {
+        console.error('Camera error:', error);
+        document.getElementById('cameraPermissionMsg').style.display = 'block';
+
+        // Fallback to file picker based on error type
+        if (error.name === 'NotAllowedError') {
+            showToast('Please allow camera access or use gallery', 'warning');
+        } else if (error.name === 'NotFoundError') {
+            showToast('No camera found on this device', 'warning');
+            document.getElementById('cameraFileInput').click();
+        } else {
+            document.getElementById('cameraFileInput').click();
+        }
+    }
+}
+
+function capturePhoto() {
+    if (!cameraStream) return;
+
+    const video = document.getElementById('cameraPreview');
+    const canvas = document.getElementById('cameraCanvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    currentImageData = imageData;
+    currentImageSource = 'camera';
+    document.getElementById('cameraData').value = imageData;
+
+    stopCamera();
+    document.querySelector('.camera-container').style.display = 'none';
+    document.getElementById('startCameraBtn').style.display = 'block';
+    document.getElementById('captureBtn').style.display = 'none';
+    document.getElementById('mobileCaptureBtn').style.display = 'none';
+
+    showImageSummary(imageData);
+    showToast('Photo captured successfully!', 'success');
+}
+
+async function switchCamera() {
+    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: isMobile ? 1080 : 1280 },
+                height: { ideal: isMobile ? 1920 : 720 }
+            },
+            audio: false
+        });
+
+        const video = document.getElementById('cameraPreview');
+        video.srcObject = cameraStream;
+
+        if (isIOS) {
+            await video.play();
+        }
+
+        showToast(`Switched to ${currentFacingMode === 'environment' ? 'back' : 'front'} camera`, 'info');
+
+    } catch (error) {
+        console.error('Switch camera error:', error);
+        showToast('Failed to switch camera', 'error');
+        // Revert facing mode on failure
+        currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    isCameraActive = false;
+}
+
+function resetCameraUI() {
+    document.querySelector('.camera-container').style.display = 'none';
+    document.getElementById('startCameraBtn').style.display = 'block';
+    document.getElementById('captureBtn').style.display = 'none';
+    document.getElementById('mobileCaptureBtn').style.display = 'none';
+    document.getElementById('cameraData').value = '';
+}
+
+// ========== IMAGE PREVIEW FUNCTIONS ==========
+function previewGalleryImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'warning');
+        return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('Image size should be less than 10MB', 'warning');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        currentImageData = e.target.result;
+        currentImageSource = 'gallery';
+        showImageSummary(currentImageData, file.size);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function showImageSummary(imageData, fileSize = null) {
+    const summaryImage = document.getElementById('summaryImage');
+    summaryImage.src = imageData;
+
+    // Calculate and display file size
+    if (fileSize) {
+        const sizeInKB = Math.round(fileSize / 1024);
+        const sizeInMB = (fileSize / (1024 * 1024)).toFixed(1);
+        const sizeText = fileSize > 1024 * 1024 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
+        document.getElementById('imageSize').textContent = sizeText;
+    } else {
+        // For camera images, estimate size
+        const base64Length = imageData.length - 'data:image/jpeg;base64,'.length;
+        const sizeInKB = Math.round((base64Length * 3) / 4 / 1024);
+        document.getElementById('imageSize').textContent = `${sizeInKB} KB`;
+    }
+
+    // Show summary, hide tips
+    document.getElementById('imageSummary').style.display = 'block';
+    document.getElementById('tipsCard').style.display = 'none';
+
+    // Update submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze This Image';
+    submitBtn.classList.add('pulse-animation');
+}
+
+function hideImageSummary() {
+    document.getElementById('imageSummary').style.display = 'none';
+    document.getElementById('tipsCard').style.display = 'block';
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze Image';
+    submitBtn.classList.remove('pulse-animation');
+
+    currentImageData = null;
+    currentImageSource = null;
+}
+
+function changeImage() {
+    if (currentImageSource === 'gallery') {
+        document.getElementById('image').click();
+    } else if (currentImageSource === 'camera') {
+        hideImageSummary();
+        resetCameraUI();
+        document.getElementById('methodCamera').checked = true;
+        document.getElementById('gallerySection').style.display = 'none';
+        document.getElementById('cameraSection').style.display = 'block';
+    }
+}
+
+function zoomPreview() {
+    if (!currentImageData) return;
+    document.getElementById('modalPreviewImage').src = currentImageData;
+    const modal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+    modal.show();
+}
+
+function showCaptureTips() {
+    const modal = new bootstrap.Modal(document.getElementById('captureTipsModal'));
+    modal.show();
+}
+
+function downloadPreview() {
+    if (!currentImageData) return;
+    const link = document.createElement('a');
+    link.href = currentImageData;
+    link.download = `leaf_image_${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ========== UTILITY FUNCTIONS ==========
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+
+<style>
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    .camera-container {
+        margin: -10px -10px 10px -10px;
+        border-radius: 0;
+    }
+
+    #cameraPreview {
+        max-height: 70vh;
+        object-fit: cover;
+        border-radius: 0;
+    }
+
+    .camera-overlay button {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .camera-overlay button:active {
+        transform: scale(0.95);
+    }
+
+    #switchCameraBtn {
+        background: rgba(0,0,0,0.6);
+        border: none;
+        padding: 10px 15px;
+        font-size: 14px;
+        z-index: 10;
+    }
+
+    .btn-group.w-100 .btn {
+        padding: 12px 5px;
+        font-size: 14px;
+    }
+
+    #imageSummary .row {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    #summaryImage {
+        margin-bottom: 15px;
+        max-height: 200px;
+    }
+
+    .border-dashed {
+        padding: 1rem !important;
+    }
+}
+
+/* Touch-friendly buttons */
+.btn, .btn-group .btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent zoom on input focus for iOS */
+input, select, textarea {
+    font-size: 16px !important;
+}
+
+/* Disease sample cards */
+.disease-sample-card {
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.disease-sample-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.disease-sample-card .card-body {
+    padding: 0.5rem;
+}
+
+/* Camera styles */
+.camera-container {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+#cameraPreview {
+    display: block;
+    width: 100%;
+    transform: scaleX(-1); /* Mirror for front camera feel */
+}
+
+/* But captured image should NOT be mirrored */
+#cameraCanvas, #summaryImage {
+    transform: scaleX(1);
+}
+
+/* Image Summary */
+#imageSummary {
+    border: 2px solid #28a745;
+    animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+/* Drag and drop highlight */
+#gallerySection.dragover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+    border-color: #0d6efd !important;
+}
+</style>
+
+<!-- iOS compatibility -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+{% endblock %}

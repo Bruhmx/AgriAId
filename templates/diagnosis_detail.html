@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+
+{% block title %}Diagnosis Details - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-12">
+            <!-- Page Header -->
+            <div class="page-header mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-6 mb-2">
+                            <i class="fas fa-file-medical-alt me-2 text-primary"></i>Diagnosis Details
+                        </h1>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="{{ url_for('history') }}">Diagnosis History</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">#{{ diagnosis.id }}</li>
+                            </ol>
+                        </nav>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                        <button class="btn btn-outline-success" onclick="exportReport()">
+                            <i class="fas fa-download me-1"></i>Download
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="shareDiagnosis()">
+                            <i class="fas fa-share-alt me-1"></i>Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnosis Summary Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>Diagnosis Summary
+                        </h5>
+                        <div>
+                            <span class="badge bg-light text-dark me-2">
+                                ID: #{{ diagnosis.id }}
+                            </span>
+                            <span class="badge bg-info">
+                                {{ diagnosis.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Main Info -->
+                        <div class="col-md-8">
+                            <div class="row mb-3">
+                                <div class="col-sm-6">
+                                    <h6 class="text-muted mb-1">Crop Type</h6>
+                                    <h4 class="mb-0">
+                                        <span class="badge bg-success fs-6">{{ diagnosis.crop|title }}</span>
+                                    </h4>
+                                </div>
+                                <div class="col-sm-6">
+                                    <h6 class="text-muted mb-1">Disease Detected</h6>
+                                    <h4 class="mb-0">
+                                        <span class="badge bg-danger fs-6">{{ diagnosis.disease_detected }}</span>
+                                    </h4>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-sm-6">
+                                    <h6 class="text-muted mb-1">Confidence Level</h6>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-3" style="height: 25px;">
+                                            <div class="progress-bar bg-{{ 'success' if diagnosis.confidence >= 80 else 'warning' if diagnosis.confidence >= 60 else 'danger' }}"
+                                                 role="progressbar"
+                                                 style="width: {{ diagnosis.confidence }}%">
+                                                {{ diagnosis.confidence }}%
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-{{ 'success' if diagnosis.confidence >= 80 else 'warning' if diagnosis.confidence >= 60 else 'danger' }}">
+                                            {{ 'High' if diagnosis.confidence >= 80 else 'Medium' if diagnosis.confidence >= 60 else 'Low' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <h6 class="text-muted mb-1">Severity Assessment</h6>
+                                    <h4 class="mb-0">
+                                        <span class="badge bg-{{ 'success' if diagnosis.severity == 'Mild' else 'warning' if diagnosis.severity == 'Moderate' else 'danger' }} fs-6">
+                                            {{ diagnosis.severity }}
+                                        </span>
+                                    </h4>
+                                </div>
+                            </div>
+
+                            <!-- Symptoms List -->
+                            {% if diagnosis.symptoms %}
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Observed Symptoms</h6>
+                                <div class="bg-light p-3 rounded">
+                                    <ul class="mb-0">
+                                        {% for symptom in diagnosis.symptoms.split('\n') %}
+                                            {% if symptom.strip() %}
+                                            <li>{{ symptom.strip() }}</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Image & Save Button -->
+                        <div class="col-md-4 border-start">
+                            <div class="text-center mb-4">
+                                <h6 class="text-muted mb-3">Analyzed Image</h6>
+                                <div class="position-relative">
+                                    <img src="{{ url_for('static', filename='uploads/' + diagnosis.image_path) }}"
+                                         class="img-fluid rounded shadow-sm"
+                                         alt="Diagnosis image"
+                                         style="max-height: 200px; cursor: pointer;"
+                                         onclick="viewImage('{{ url_for('static', filename='uploads/' + diagnosis.image_path) }}')">
+                                    <div class="position-absolute top-0 end-0 mt-2 me-2">
+                                        <button class="btn btn-sm btn-light" onclick="downloadImage('{{ url_for('static', filename='uploads/' + diagnosis.image_path) }}')">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">Click image to enlarge</small>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-success" onclick="saveDiagnosis()" id="saveDiagnosisBtn">
+                                    <i class="fas fa-bookmark me-2"></i>
+                                    <span id="saveBtnText">{{ 'Unsave' if diagnosis.saved else 'Save Diagnosis' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Analysis Section -->
+            <div class="row">
+                <!-- Disease Information -->
+                <div class="col-lg-6 mb-4">
+    <div class="card h-100 shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Disease Information</h5>
+        </div>
+        <div class="card-body">
+            {% if disease_info %}
+                <!-- Disease Name & Crop -->
+
+                <!-- Cause -->
+                <div class="mb-3">
+                    <h6 class="text-info mb-2">Cause</h6>
+                    <p class="mb-0">{{ disease_info.cause }}</p>
+                </div>
+
+                <!-- Symptoms -->
+                <div class="mb-3">
+                    <h6 class="text-info mb-2">Symptoms</h6>
+                    <p class="mb-0">{{ disease_info.symptoms }}</p>
+                </div>
+
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No detailed disease information available for <strong>{{ diagnosis.disease_detected }}</strong>.</p>
+                    <p class="small text-muted">Please consult with local agricultural experts for specific advice.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+                <!-- Treatment Recommendations -->
+                <div class="col-lg-6 mb-4">
+    <div class="card h-100 shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-prescription-bottle-alt me-2"></i>Treatment Recommendations</h5>
+        </div>
+        <div class="card-body">
+            {% if disease_info %}
+                <!-- Manual Treatments -->
+                <div class="mb-4">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-hands-helping me-2"></i>Manual Treatments
+                    </h6>
+                    <p>{{ disease_info.manual_treatment }}</p>
+                </div>
+
+                <!-- Organic Treatments -->
+                <div class="mb-4">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-leaf me-2"></i>Organic Treatments
+                    </h6>
+                    <p>{{ disease_info.organic_treatment }}</p>
+                </div>
+
+                <!-- Chemical Treatments -->
+                <div class="mb-4">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-flask me-2"></i>Chemical Treatments
+                    </h6>
+                    <p>{{ disease_info.chemical_treatment }}</p>
+                </div>
+
+                <!-- Prevention -->
+                <div class="mb-3">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-shield-alt me-2"></i>Prevention
+                    </h6>
+                    <p>{{ disease_info.prevention }}</p>
+                </div>
+            {% else %}
+                <!-- Fallback to diagnosis recommendations if no disease_info -->
+                <div class="mb-4">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-hands-helping me-2"></i>Manual Treatments
+                    </h6>
+                    {% if diagnosis.recommendations %}
+                        {% set found_manual = false %}
+                        {% for rec in diagnosis.recommendations.split('\n') %}
+                            {% if rec.strip() and ('manual' in rec.lower() or 'remove' in rec.lower() or 'prune' in rec.lower()) %}
+                                <p>{{ rec.strip() }}</p>
+                                {% set found_manual = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if not found_manual %}
+                            <p class="text-muted">Remove and destroy infected plant parts. Improve air circulation.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">Remove infected plant parts and practice crop rotation.</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-leaf me-2"></i>Organic Treatments
+                    </h6>
+                    <p class="text-muted">Apply neem oil or sulfur-based organic fungicides.</p>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-flask me-2"></i>Chemical Treatments
+                    </h6>
+                    <p class="text-muted">Consult your local agricultural extension for recommended fungicides.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+            </div>
+
+            <!-- Timeline & Notes Section -->
+            <div class="row">
+                <!-- Timeline -->
+                <div class="col-lg-8 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Diagnosis Timeline</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-primary"></div>
+                                    <div class="timeline-content">
+                                        <h6>Image Uploaded</h6>
+                                        <p class="text-muted small mb-0">{{ diagnosis.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-content">
+                                        <h6>Crop Identified</h6>
+                                        <p class="text-muted small mb-0">{{ diagnosis.crop|title }} detected</p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6>Disease Analysis</h6>
+                                        <p class="text-muted small mb-0">{{ diagnosis.disease_detected }} identified with {{ diagnosis.confidence }}% confidence</p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-danger"></div>
+                                    <div class="timeline-content">
+                                        <h6>Severity Assessment</h6>
+                                        <p class="text-muted small mb-0">{{ diagnosis.severity }} severity determined</p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-dark"></div>
+                                    <div class="timeline-content">
+                                        <h6>Recommendations Generated</h6>
+                                        <p class="text-muted small mb-0">Treatment plan created</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notes</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add Notes Form -->
+                            <div class="mb-4">
+                                <form id="addNoteForm" onsubmit="addNote(event)">
+                                    <div class="mb-3">
+                                        <label for="note" class="form-label">Add Note</label>
+                                        <textarea class="form-control" id="note" rows="3" placeholder="Add notes about this diagnosis..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-plus me-1"></i>Add Note
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Existing Notes -->
+                            <div id="notesList">
+                                {% if diagnosis.notes %}
+                                <h6 class="mb-3">Previous Notes</h6>
+                                {% for note in diagnosis.notes %}
+                                <div class="card mb-2">
+                                    <div class="card-body p-3">
+                                        <p class="mb-1 small">{{ note.content }}</p>
+                                        <p class="mb-0 text-muted small">{{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                {% else %}
+                                <p class="text-muted text-center py-3">No notes added yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back to History -->
+            <div class="d-flex justify-content-between mt-3">
+                <a href="{{ url_for('history') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to History
+                </a>
+                <div>
+                    <a href="{{ url_for('upload_image') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>New Diagnosis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid rounded" alt="Enlarged image">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary" onclick="downloadCurrentImage()">
+                    <i class="fas fa-download me-1"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -25px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    top: 5px;
+}
+
+.timeline-content {
+    padding-bottom: 10px;
+}
+
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    font-size: 0.8em;
+    padding: 0.5em 1em;
+}
+
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    font-weight: 600;
+}
+</style>
+
+<script>
+let currentImageUrl = '';
+
+// Image viewing
+function viewImage(url) {
+    currentImageUrl = url;
+    document.getElementById('modalImage').src = url;
+    document.getElementById('imageModalLabel').textContent = 'Image Preview';
+    new bootstrap.Modal(document.getElementById('imageModal')).show();
+}
+
+function downloadImage(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diagnosis_image_{{ diagnosis.id }}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function downloadCurrentImage() {
+    if (currentImageUrl) {
+        downloadImage(currentImageUrl);
+    }
+}
+
+// Save/Unsave diagnosis - FIXED VERSION
+function saveDiagnosis() {
+    const diagnosisId = {{ diagnosis.id }};
+    const saveBtn = document.getElementById('saveDiagnosisBtn');
+    const saveBtnText = document.getElementById('saveBtnText');
+    const originalText = saveBtnText.innerText;
+
+    // Show loading state
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+    fetch(`/api/diagnosis/${diagnosisId}/toggle-save`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Update button text based on new saved state
+            if (data.saved) {
+                saveBtn.innerHTML = '<i class="fas fa-bookmark me-2"></i><span id="saveBtnText">Unsave</span>';
+                saveBtn.classList.remove('btn-outline-success');
+                saveBtn.classList.add('btn-warning');
+            } else {
+                saveBtn.innerHTML = '<i class="fas fa-bookmark me-2"></i><span id="saveBtnText">Save Diagnosis</span>';
+                saveBtn.classList.remove('btn-warning');
+                saveBtn.classList.add('btn-outline-success');
+            }
+
+            // Show success message
+            showToast(data.message || (data.saved ? 'Diagnosis saved!' : 'Diagnosis removed from saved'), 'success');
+        } else {
+            throw new Error(data.error || 'Failed to save diagnosis');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to save diagnosis. Please try again.', 'danger');
+        // Restore button state
+        saveBtn.innerHTML = originalText;
+        saveBtn.classList.add('btn-outline-success');
+    })
+    .finally(() => {
+        saveBtn.disabled = false;
+    });
+}
+
+// Notes functionality
+function addNote(e) {
+    e.preventDefault();
+    const noteContent = document.getElementById('note').value.trim();
+
+    if (!noteContent) {
+        showToast('Please enter a note.', 'warning');
+        return;
+    }
+
+    const addNoteBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = addNoteBtn.innerHTML;
+    addNoteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+    addNoteBtn.disabled = true;
+
+    fetch(`/api/diagnosis/{{ diagnosis.id }}/notes`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: noteContent })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const notesList = document.getElementById('notesList');
+
+            // Remove "No notes" message if present
+            if (notesList.innerHTML.includes('No notes added yet.')) {
+                notesList.innerHTML = '<h6 class="mb-3">Previous Notes</h6>';
+            }
+
+            // Add heading if this is the first note
+            if (!document.querySelector('#notesList h6')) {
+                notesList.insertAdjacentHTML('afterbegin', '<h6 class="mb-3">Previous Notes</h6>');
+            }
+
+            // Add the new note
+            const noteHtml = `
+                <div class="card mb-2">
+                    <div class="card-body p-3">
+                        <p class="mb-1 small">${escapeHtml(noteContent)}</p>
+                        <p class="mb-0 text-muted small">${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+            notesList.insertAdjacentHTML('beforeend', noteHtml);
+            document.getElementById('note').value = '';
+            showToast('Note added successfully!', 'success');
+        } else {
+            showToast(data.error || 'Failed to add note', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to add note. Please try again.', 'danger');
+    })
+    .finally(() => {
+        addNoteBtn.innerHTML = originalText;
+        addNoteBtn.disabled = false;
+    });
+}
+
+// Share diagnosis
+function shareDiagnosis() {
+    const url = window.location.href;
+    const title = 'My Diagnosis: {{ diagnosis.disease_detected }}';
+
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: 'Check out this plant disease diagnosis from AgriAId',
+            url: url
+        }).catch(console.error);
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Link copied to clipboard!', 'success');
+        }).catch(() => {
+            showToast('Failed to copy link', 'danger');
+        });
+    }
+}
+
+// Export report
+function exportReport() {
+    const exportBtn = event.currentTarget;
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Downloading...';
+    exportBtn.disabled = true;
+
+    fetch(`/api/diagnosis/{{ diagnosis.id }}/export`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diagnosis_report_{{ diagnosis.id }}_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showToast('Report downloaded successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Export error:', error);
+            showToast('Failed to export report. Please try again.', 'danger');
+        })
+        .finally(() => {
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+        });
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // Add toast to container
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial button state based on saved status
+    {% if diagnosis.saved %}
+    const saveBtn = document.getElementById('saveDiagnosisBtn');
+    if (saveBtn) {
+        saveBtn.classList.remove('btn-outline-success');
+        saveBtn.classList.add('btn-warning');
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

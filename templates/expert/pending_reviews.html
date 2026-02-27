@@ -1,0 +1,366 @@
+{% extends "expert/base_expert.html" %}
+
+{% block title %}Pending Reviews{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Pending Diagnoses Review</h1>
+    <span class="badge bg-warning p-3">Total: {{ total }} diagnoses</span>
+</div>
+
+<!-- Reviews Table -->
+<div class="card">
+    <div class="card-header bg-warning text-white">
+        <h5 class="mb-0">Diagnoses Awaiting Review</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Image</th>
+                        <th>Farmer</th>
+                        <th>Crop</th>
+                        <th>Detected Disease</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for diag in diagnoses %}
+                    <tr id="diagnosis-{{ diag.id }}">
+                        <td>#{{ diag.id }}</td>
+                        <td>
+                            <img src="/api/diagnosis/{{ diag.id }}/image"
+                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer;"
+                                 onclick="openImageModal('/api/diagnosis/{{ diag.id }}/image')"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/50x50?text=No+Image';"
+                                 alt="Thumbnail"
+                                 class="img-thumbnail">
+                        </td>
+                        <td>
+                            <strong>{{ diag.farmer_name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ diag.crop }}</span>
+                        </td>
+                        <td>{{ diag.disease_detected }}</td>
+                        <td>{{ diag.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="reviewDiagnosis({{ diag.id }})">
+                                <i class="fas fa-check-circle me-1"></i>Review
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-muted">No pending diagnoses</h5>
+                            <p>All caught up!</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ 'disabled' if page == 1 }}">
+                    <a class="page-link" href="?page={{ page-1 }}">Previous</a>
+                </li>
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p >= page - 2 and p <= page + 2 %}
+                    <li class="page-item {{ 'active' if p == page }}">
+                        <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {{ 'disabled' if page == total_pages }}">
+                    <a class="page-link" href="?page={{ page+1 }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Review Diagnosis #<span id="reviewDiagnosisId"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="reviewModalBody">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitReview()">
+                    <i class="fas fa-check me-1"></i>Submit Review
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Zoom Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Diagnosis Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="zoomImage" class="img-fluid" alt="Diagnosis Image">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentDiagnosisId = null;
+
+function openImageModal(imageSrc) {
+    document.getElementById('zoomImage').src = imageSrc;
+    const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    imageModal.show();
+}
+
+function reviewDiagnosis(id) {
+    currentDiagnosisId = id;
+    document.getElementById('reviewDiagnosisId').textContent = id;
+
+    fetch(`/api/diagnosis/${id}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+
+            const content = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Farmer</h6>
+                        <p class="fw-bold">${data.farmer_name || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Date</h6>
+                        <p class="fw-bold">${data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A'}</p>
+                    </div>
+                </div>
+
+                <!-- Image Section -->
+                <div class="mb-4">
+                    <h6 class="text-muted">Uploaded Image</h6>
+                    <div class="text-center p-3 bg-light rounded">
+                        <img src="/api/diagnosis/${id}/image"
+                             class="img-fluid rounded"
+                             style="max-height: 300px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                             onclick="openImageModal('/api/diagnosis/${id}/image')"
+                             alt="Diagnosis Image"
+                             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Not+Available';">
+                        <p class="text-muted mt-2 small">
+                            <i class="fas fa-search-plus me-1"></i>Click image to enlarge
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Crop</h6>
+                        <p class="fw-bold">${data.crop || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Detected Disease</h6>
+                        <p class="fw-bold">${data.disease_detected || 'N/A'}</p>
+                    </div>
+
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted">Symptoms Reported</h6>
+                    <div class="p-3 bg-light rounded">
+                        ${data.symptoms || 'No symptoms reported'}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted">AI Recommendations</h6>
+                    <div class="p-3 bg-light rounded">
+                        ${data.recommendations || 'No recommendations'}
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3">Expert Review</h5>
+                <form id="reviewForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Review Status *</label>
+
+                        <select class="form-select" id="reviewStatus" required>
+                            <option value="">Select status</option>
+                            <option value="accurate">✅ Accurate - AI was correct</option>
+                            <option value="needs correction">🔄 Needs Correction - AI was wrong</option>  <!-- This must be exact -->
+                            <option value="reject">❌ Reject - Invalid report</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="correctDiseaseField" style="display: none;">
+                        <label class="form-label fw-bold">Correct Disease *</label>
+                        <select class="form-select" id="correctedDisease">
+                            <option value="">Select correct disease</option>
+                            {% for disease in diseases %}
+                            <option value="{{ disease.id }}" data-name="{{ disease.disease_name }}">
+                                {{ disease.disease_name }} ({{ disease.crop }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Required when marking as needs correction</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Expert Notes</label>
+                        <textarea class="form-control" id="expertNotes" rows="4" placeholder="Add your expert observations..."></textarea>
+                    </div>
+                </form>
+            `;
+
+            document.getElementById('reviewModalBody').innerHTML = content;
+
+            // Show/hide disease selection based on status
+            document.getElementById('reviewStatus').addEventListener('change', function() {
+                const correctField = document.getElementById('correctDiseaseField');
+                correctField.style.display = this.value === 'needs correction' ? 'block' : 'none';
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading diagnosis details: ' + error.message);
+        });
+}
+
+// Submit review function
+function submitReview() {
+    const status = document.getElementById('reviewStatus').value;
+    console.log('1. Selected status:', status);
+
+    if (!status) {
+        alert('Please select a review status');
+        return;
+    }
+
+    // If needs_correction, require disease selection
+    if (status === 'needs correction') {
+        const diseaseSelect = document.getElementById('correctedDisease');
+        if (!diseaseSelect.value) {
+            alert('Please select the correct disease');
+            return;
+        }
+    }
+
+    const expertNotes = document.getElementById('expertNotes').value || '';
+
+    const data = {
+        action: status,
+        expert_notes: expertNotes
+    };
+
+    console.log('2. Sending data to server:', JSON.stringify(data, null, 2));
+
+    // Add corrected disease if applicable
+    if (status === 'needs correction') {
+        const diseaseSelect = document.getElementById('correctedDisease');
+        const selectedOption = diseaseSelect.options[diseaseSelect.selectedIndex];
+        data.corrected_disease_id = diseaseSelect.value;
+        data.corrected_disease_name = selectedOption.text.split(' (')[0];
+    }
+
+    // Show loading
+    const submitBtn = document.querySelector('#reviewModal .btn-primary');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting...';
+    submitBtn.disabled = true;
+
+    fetch(`/expert/review/${currentDiagnosisId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('3. Server response:', data);
+
+        if (data.success) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('reviewModal'));
+            modal.hide();
+
+            // Show success message
+            alert('✅ Review submitted successfully!');
+
+            // Remove the row
+            const row = document.getElementById(`diagnosis-${currentDiagnosisId}`);
+            if (row) {
+                row.remove();
+            }
+
+            // Check if table is empty
+            const tbody = document.querySelector('tbody');
+            if (tbody && tbody.children.length === 0) {
+                location.reload(); // Reload to show empty state
+            }
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('4. Error:', error);
+        alert('Error submitting review: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Make sure submitReview is available globally
+    window.submitReview = submitReview;
+});
+
+// Clean up modal when hidden
+document.getElementById('reviewModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('reviewModalBody').innerHTML = 'Loading...';
+    currentDiagnosisId = null;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Expert Insights - {{ disease_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header with Clear Message -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-3x me-3"></i>
+                        <div>
+                            <h4 class="mb-1">Optional Expert Questions</h4>
+                            <p class="mb-0">
+                                These questions provide additional insights about {{ disease_name }}.
+                                <strong>Your answers will NOT change the AI diagnosis above.</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Questions Column -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Validation Questions for {{ disease_name }}
+                    </h5>
+                    <span class="badge bg-light text-primary" id="questionCounter">0/{{ questions|length }} answered</span>
+                </div>
+                <div class="card-body">
+                    <!-- Reference Image (if available) -->
+                    {% if image_path %}
+                    <div class="alert alert-light mb-4 border">
+                        <div class="d-flex">
+                            <img src="{{ image_path }}"
+                                 style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;"
+                                 class="me-3 border" alt="Your uploaded image">
+                            <div>
+                                <i class="fas fa-eye text-primary me-2"></i>
+                                <strong>Reference your uploaded image</strong> while answering
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-success" id="answerProgressBar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Questions Form -->
+                    <form id="expertQuestionsForm">
+                        <div id="questionsContainer">
+                            {% for question in questions %}
+                            <div class="card mb-3 question-card" data-question-id="{{ question.id }}" data-category="{{ question.question_category }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0">{{ loop.index }}. {{ question.question_text }}</h6>
+                                        <span class="badge category-badge" data-category="{{ question.question_category }}">
+                                            {{ question.question_category|capitalize if question.question_category else 'General' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check"
+                                               name="q_{{ question.id }}"
+                                               id="q_{{ question.id }}_yes"
+                                               value="yes" autocomplete="off">
+                                        <label class="btn btn-outline-success" for="q_{{ question.id }}_yes">
+                                            <i class="fas fa-check me-2"></i>Yes
+                                        </label>
+
+                                        <input type="radio" class="btn-check"
+                                               name="q_{{ question.id }}"
+                                               id="q_{{ question.id }}_no"
+                                               value="no" autocomplete="off">
+                                        <label class="btn btn-outline-danger" for="q_{{ question.id }}_no">
+                                            <i class="fas fa-times me-2"></i>No
+                                        </label>
+
+                                        <input type="radio" class="btn-check"
+                                               name="q_{{ question.id }}"
+                                               id="q_{{ question.id }}_unknown"
+                                               value="unknown" autocomplete="off" checked>
+                                        <label class="btn btn-outline-secondary" for="q_{{ question.id }}_unknown">
+                                            <i class="fas fa-question me-2"></i>Not Sure
+                                        </label>
+                                    </div>
+
+                                    <!-- Follow-up container -->
+                                    <div id="followup-{{ question.id }}" class="mt-3" style="display: none;"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="button" class="btn btn-primary btn-lg" id="getInsightsBtn">
+                                <i class="fas fa-lightbulb me-2"></i>Get Expert Insights
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Column -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Expert Insights</h5>
+                </div>
+                <div class="card-body" id="insightsContainer">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-clipboard-list fa-3x mb-3 opacity-50"></i>
+                        <p>Answer the questions and click "Get Expert Insights" to see your personalized analysis</p>
+                        <hr class="my-4">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Your AI diagnosis of <strong>{{ disease_name }}</strong> remains unchanged
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Summary Stats (hidden initially) -->
+                <div id="insightsSummary" class="card-footer bg-light" style="display: none;">
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-check-circle text-success"></i> Yes:</span>
+                            <span id="summaryYes">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-times-circle text-danger"></i> No:</span>
+                            <span id="summaryNo">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-question-circle text-secondary"></i> Unsure:</span>
+                            <span id="summaryUnknown">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2 pt-2 border-top">
+                            <span><strong>Match Score:</strong></span>
+                            <span id="summaryScore">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Link back to AI diagnosis -->
+                <div class="card-footer">
+                    <a href="{{ url_for('upload_image') }}" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="fas fa-arrow-left me-2"></i>Back to AI Diagnosis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.category-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.5rem;
+}
+.category-badge[data-category="symptom"] {
+    background-color: #0d6efd;
+    color: white;
+}
+.category-badge[data-category="environment"] {
+    background-color: #198754;
+    color: white;
+}
+.category-badge[data-category="field"] {
+    background-color: #ffc107;
+    color: black;
+}
+.category-badge[data-category="severity"] {
+    background-color: #dc3545;
+    color: white;
+}
+.category-badge[data-category="management"] {
+    background-color: #6c757d;
+    color: white;
+}
+.question-card {
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+}
+.question-card.answered-yes {
+    border-left-color: #198754;
+    background-color: rgba(25, 135, 84, 0.05);
+}
+.question-card.answered-no {
+    border-left-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.05);
+}
+.question-card.answered-unknown {
+    border-left-color: #6c757d;
+    background-color: rgba(108, 117, 125, 0.05);
+}
+.question-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.sticky-top {
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+}
+.insights-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+.insight-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+    animation: fadeIn 0.3s;
+}
+.insight-item:last-child {
+    border-bottom: none;
+}
+.insight-item.match {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-left: 3px solid #198754;
+}
+.insight-item.note {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+}
+.insight-item.info {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left: 3px solid #0d6efd;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+let answeredCount = 0;
+const totalQuestions = {{ questions|length }};
+const diseaseCode = "{{ disease_code }}";
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add change listeners to all radio buttons
+    document.querySelectorAll('.btn-check').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            updateQuestionStatus(this);
+
+            // Handle follow-up questions for "Yes" answers
+            if (this.value === 'yes') {
+                const questionCard = this.closest('.question-card');
+                const questionId = questionCard.dataset.questionId;
+                fetchFollowupQuestions(questionId);
+            }
+        });
+    });
+
+    updateProgress();
+});
+
+function updateQuestionStatus(radio) {
+    const questionCard = radio.closest('.question-card');
+    const questionId = questionCard.dataset.questionId;
+    const answer = radio.value;
+
+    // Remove previous answer classes
+    questionCard.classList.remove('answered-yes', 'answered-no', 'answered-unknown');
+
+    // Add new answer class
+    if (answer === 'yes') {
+        questionCard.classList.add('answered-yes');
+    } else if (answer === 'no') {
+        questionCard.classList.add('answered-no');
+    } else {
+        questionCard.classList.add('answered-unknown');
+    }
+
+    // Count answered questions (excluding 'unknown' as default)
+    answeredCount = 0;
+    document.querySelectorAll('.question-card').forEach(card => {
+        const selected = card.querySelector('.btn-check:checked');
+        if (selected && selected.value !== 'unknown') {
+            answeredCount++;
+        }
+    });
+
+    updateProgress();
+}
+
+function updateProgress() {
+    // Update counter
+    document.getElementById('questionCounter').textContent = `${answeredCount}/${totalQuestions}`;
+
+    // Update progress bar
+    const progressPercent = (answeredCount / totalQuestions) * 100;
+    document.getElementById('answerProgressBar').style.width = progressPercent + '%';
+}
+
+function fetchFollowupQuestions(parentId) {
+    const container = document.getElementById(`followup-${parentId}`);
+
+    // Show loading
+    container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+    container.style.display = 'block';
+
+    fetch(`/api/get-next-questions/${parentId}/yes`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.next_questions.length > 0) {
+                displayFollowupQuestions(parentId, data.next_questions);
+            } else {
+                container.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            container.style.display = 'none';
+        });
+}
+
+function displayFollowupQuestions(parentId, questions) {
+    const container = document.getElementById(`followup-${parentId}`);
+
+    let html = '<hr><h6 class="text-muted mb-3"><i class="fas fa-sitemap me-2"></i>Follow-up Questions:</h6>';
+
+    questions.forEach((q, index) => {
+        const categoryClass = q.question_category || 'general';
+        html += `
+        <div class="card mb-2 bg-light followup-card" data-question-id="${q.id}">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <p class="mb-0 small">${index + 1}. ${q.question_text}</p>
+                    <span class="badge category-badge" data-category="${categoryClass}">
+                        ${categoryClass}
+                    </span>
+                </div>
+                <div class="btn-group btn-group-sm w-100">
+                    <input type="radio" class="btn-check"
+                           name="q_${q.id}" id="q_${q.id}_yes" value="yes" autocomplete="off">
+                    <label class="btn btn-outline-success btn-sm" for="q_${q.id}_yes">Yes</label>
+
+                    <input type="radio" class="btn-check"
+                           name="q_${q.id}" id="q_${q.id}_no" value="no" autocomplete="off">
+                    <label class="btn btn-outline-danger btn-sm" for="q_${q.id}_no">No</label>
+
+                    <input type="radio" class="btn-check"
+                           name="q_${q.id}" id="q_${q.id}_unknown" value="unknown" autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary btn-sm" for="q_${q.id}_unknown">?</label>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Add event listeners to new radio buttons
+    container.querySelectorAll('.btn-check').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            const followupCard = this.closest('.followup-card');
+            if (followupCard) {
+                if (this.value === 'yes') {
+                    followupCard.style.borderLeft = '3px solid #198754';
+                } else if (this.value === 'no') {
+                    followupCard.style.borderLeft = '3px solid #dc3545';
+                } else {
+                    followupCard.style.borderLeft = '3px solid #6c757d';
+                }
+            }
+
+            // Update main progress (count follow-ups too)
+            answeredCount++;
+            updateProgress();
+        });
+    });
+}
+
+function getInsights() {
+    // Collect all answers
+    const answers = {};
+    document.querySelectorAll('.btn-check:checked').forEach(radio => {
+        const questionId = radio.name.replace('q_', '');
+        answers[questionId] = radio.value;
+    });
+
+    if (Object.keys(answers).length === 0) {
+        alert('Please answer at least one question first.');
+        return;
+    }
+
+    // Show loading in insights container
+    document.getElementById('insightsContainer').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Analyzing your answers...</p>
+        </div>
+    `;
+
+    // Hide summary while loading
+    document.getElementById('insightsSummary').style.display = 'none';
+
+    // Get insights
+    fetch('/api/get-question-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            answers: answers,
+            disease_code: diseaseCode
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayInsights(data);
+        } else {
+            throw new Error(data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('insightsContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error: ${error.message}
+            </div>
+        `;
+    });
+}
+
+function displayInsights(data) {
+    let html = '<div class="insights-list">';
+
+    // Add insights
+    if (data.insights && data.insights.length > 0) {
+        data.insights.forEach(insight => {
+            const typeClass = insight.type || 'info';
+            html += `
+                <div class="insight-item ${typeClass}">
+                    ${insight.text}
+                </div>
+            `;
+        });
+    } else {
+        html += '<p class="text-muted text-center">No specific insights available for these answers.</p>';
+    }
+
+    html += '</div>';
+
+    document.getElementById('insightsContainer').innerHTML = html;
+
+    // Update and show summary
+    if (data.summary) {
+        document.getElementById('summaryYes').textContent = data.summary.yes_count || 0;
+        document.getElementById('summaryNo').textContent = data.summary.no_count || 0;
+        document.getElementById('summaryUnknown').textContent = data.summary.unknown_count || 0;
+
+        const total = data.summary.yes_count + data.summary.no_count + data.summary.unknown_count;
+        const score = total > 0 ? Math.round((data.summary.symptom_match_score / total) * 100) : 0;
+        document.getElementById('summaryScore').textContent = score + '%';
+
+        document.getElementById('insightsSummary').style.display = 'block';
+    }
+}
+
+// Attach getInsights to button
+document.getElementById('getInsightsBtn').addEventListener('click', getInsights);
+</script>
+{% endblock %}

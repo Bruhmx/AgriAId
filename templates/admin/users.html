@@ -1,0 +1,510 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}User Management - Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">User Management</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Users</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="fas fa-user-plus me-2"></i>Add New User
+        </button>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ stats.total_users if stats else 0 }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-primary">{{ stats.farmers or 0 }}</div>
+            <div class="stat-label">Farmers</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">{{ stats.experts or 0 }}</div>
+            <div class="stat-label">Experts</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">{{ stats.researchers or 0 }}</div>
+            <div class="stat-label">Researchers</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-warning">{{ stats.students or 0 }}</div>
+            <div class="stat-label">Students</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-danger">{{ stats.admins or 0 }}</div>
+            <div class="stat-label">Admins</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="table-container mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search users...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="typeFilter">
+                <option value="">All Types</option>
+                <option value="farmer">Farmers</option>
+                <option value="expert">Experts</option>
+                <option value="researcher">Researchers</option>
+                <option value="student">Students</option>
+                <option value="admin">Admins</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-redo-alt me-1"></i>Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover" id="usersTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>#{{ user.id }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {% set colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#20c997'] %}
+                            {% set color_index = (user.id % 10) if user.id else 0 %}
+                            <div class="avatar-circle me-2"
+                                 style="width: 35px; height: 35px; background: {{ colors[color_index] }}">
+                                {{ user.username[0]|upper if user.username else '?' }}
+                            </div>
+                            <div>
+                                <strong>{{ user.full_name or user.username }}</strong>
+                                <small class="d-block text-muted">@{{ user.username }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% set type_icons = {
+                            'farmer': 'tractor',
+                            'expert': 'flask',
+                            'researcher': 'microscope',
+                            'student': 'graduation-cap',
+                            'admin': 'crown'
+                        } %}
+                        {% set type_colors = {
+                            'farmer': 'success',
+                            'expert': 'info',
+                            'researcher': 'warning',
+                            'student': 'secondary',
+                            'admin': 'danger'
+                        } %}
+                        <span class="badge bg-{{ type_colors.get(user.user_type, 'secondary') }}">
+                            <i class="fas fa-{{ type_icons.get(user.user_type, 'user') }} me-1"></i>
+                            {{ user.user_type|title }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if user.is_active %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-circle me-1" style="font-size: 6px;"></i> Active
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger">
+                            <i class="fas fa-circle me-1" style="font-size: 6px;"></i> Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                    <td>
+                        {% if user.last_login %}
+                        <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</small>
+                        {% else %}
+                        <span class="badge bg-secondary">Never</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewUser({{ user.id }})"
+                                    data-bs-toggle="tooltip" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="editUser({{ user.id }})"
+                                    data-bs-toggle="tooltip" title="Edit User">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-{{ 'danger' if user.is_active else 'success' }}"
+                                    onclick="toggleUserStatus({{ user.id }}, {{ 'true' if user.is_active else 'false' }})"
+                                    data-bs-toggle="tooltip" title="{{ 'Deactivate' if user.is_active else 'Activate' }}">
+                                <i class="fas fa-{{ 'ban' if user.is_active else 'check-circle' }}"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No users found</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {{ 'disabled' if page == 1 }}">
+                <a class="page-link" href="?page={{ page-1 }}{{ filter_params }}">Previous</a>
+            </li>
+            {% for p in range(1, total_pages + 1) %}
+                {% if p >= page - 2 and p <= page + 2 %}
+                <li class="page-item {{ 'active' if p == page }}">
+                    <a class="page-link" href="?page={{ p }}{{ filter_params }}">{{ p }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {{ 'disabled' if page == total_pages }}">
+                <a class="page-link" href="?page={{ page+1 }}{{ filter_params }}">Next</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Add New User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_create_user') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="username" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" name="full_name">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">User Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="user_type" required>
+                                <option value="farmer">👨‍🌾 Farmer</option>
+                                <option value="expert">👨‍🔬 Expert</option>
+                                <option value="researcher">🔬 Researcher</option>
+                                <option value="student">🎓 Student</option>
+                                <option value="admin">🛡️ Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" name="phone">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" name="location" placeholder="City, Country">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-1"></i>Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View User Modal -->
+<div class="modal fade" id="viewUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>User Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userDetails">
+                <!-- Loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="" id="editUserForm">
+                <div class="modal-body" id="editUserContent">
+                    <!-- Loaded via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-1"></i>Update User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize DataTable
+$(document).ready(function() {
+    var table = $('#usersTable').DataTable({
+        pageLength: 10,
+        ordering: true,
+        searching: true,
+        paging: true,
+        info: true,
+        language: {
+            search: "",
+            searchPlaceholder: "Search users...",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ users",
+            infoEmpty: "Showing 0 to 0 of 0 users",
+            infoFiltered: "(filtered from _MAX_ total users)"
+        },
+        dom: 'rtip'
+    });
+
+    // Custom filters
+    $('#typeFilter').on('change', function() {
+        var type = this.value;
+        if(type) {
+            table.column(3).search('\\b' + type + '\\b', true, false).draw();
+        } else {
+            table.column(3).search('').draw();
+        }
+    });
+
+    $('#statusFilter').on('change', function() {
+        var status = this.value;
+        if(status) {
+            table.column(4).search(status, true, false).draw();
+        } else {
+            table.column(4).search('').draw();
+        }
+    });
+});
+
+function resetFilters() {
+    $('#typeFilter').val('');
+    $('#statusFilter').val('');
+    $('#searchInput').val('');
+    $('#usersTable').DataTable().search('').columns().search('').draw();
+}
+
+// View user details
+function viewUser(userId) {
+    fetch(`/api/admin/user/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#20c997'];
+            const colorIndex = (userId % 10);
+
+            const details = `
+                <div class="text-center mb-4">
+                    <div class="avatar-circle mx-auto mb-3"
+                         style="width: 80px; height: 80px; font-size: 2rem; background: ${colors[colorIndex]}">
+                        ${data.username ? data.username[0].toUpperCase() : '?'}
+                    </div>
+                    <h5>${data.full_name || data.username}</h5>
+                    <p class="text-muted">@${data.username}</p>
+                    <span class="badge bg-${data.is_active ? 'success' : 'danger'}">
+                        ${data.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Email</small>
+                        <strong>${data.email || 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">User Type</small>
+                        <strong>${data.user_type ? data.user_type.charAt(0).toUpperCase() + data.user_type.slice(1) : 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Phone</small>
+                        <strong>${data.phone || 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Location</small>
+                        <strong>${data.location || 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Joined</small>
+                        <strong>${data.created_at ? new Date(data.created_at).toLocaleDateString() : 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Last Login</small>
+                        <strong>${data.last_login ? new Date(data.last_login).toLocaleString() : 'Never'}</strong>
+                    </div>
+                </div>
+            `;
+            document.getElementById('userDetails').innerHTML = details;
+            new bootstrap.Modal(document.getElementById('viewUserModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load user details');
+        });
+}
+
+// Edit user
+function editUser(userId) {
+    fetch(`/api/admin/user/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const editForm = `
+                <input type="hidden" name="user_id" value="${data.id}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" name="full_name" value="${data.full_name || ''}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" name="phone" value="${data.phone || ''}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">User Type</label>
+                        <select class="form-select" name="user_type">
+                            <option value="farmer" ${data.user_type == 'farmer' ? 'selected' : ''}>Farmer</option>
+                            <option value="expert" ${data.user_type == 'expert' ? 'selected' : ''}>Expert</option>
+                            <option value="researcher" ${data.user_type == 'researcher' ? 'selected' : ''}>Researcher</option>
+                            <option value="student" ${data.user_type == 'student' ? 'selected' : ''}>Student</option>
+                            <option value="admin" ${data.user_type == 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" name="location" value="${data.location || ''}">
+                    </div>
+                </div>
+            `;
+            document.getElementById('editUserContent').innerHTML = editForm;
+            document.getElementById('editUserForm').action = `/admin/user/${userId}/update`;
+            new bootstrap.Modal(document.getElementById('editUserModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load user data');
+        });
+}
+
+// Toggle user status
+function toggleUserStatus(userId, isActive) {
+    const action = isActive ? 'deactivate' : 'activate';
+    const message = isActive ?
+        'Are you sure you want to deactivate this user? They will not be able to login.' :
+        'Are you sure you want to activate this user?';
+
+    if (confirm(message)) {
+        fetch(`/admin/user/${userId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to update user status: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to update user status');
+        });
+    }
+}
+</script>
+{% endblock %}

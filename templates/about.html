@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}About AgriAId{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>About AgriAId</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-4">An AI-Based Crop Disease Identification and Advisory System</h5>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6><i class="fas fa-bullseye me-2 text-primary"></i>Mission</h6>
+                                <p>To provide farmers with accurate, accessible, and affordable crop disease diagnosis using artificial intelligence and expert knowledge.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6><i class="fas fa-eye me-2 text-success"></i>Vision</h6>
+                                <p>To revolutionize agricultural disease management through technology, reducing crop losses and promoting sustainable farming practices.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">System Architecture</h5>
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h2 class="text-primary">1</h2>
+                                <h6>Image Acquisition</h6>
+                                <p class="small">Farmer uploads crop leaf image</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h2 class="text-primary">2</h2>
+                                <h6>Crop Identification</h6>
+                                <p class="small">AI identifies crop type (Corn/Rice)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h2 class="text-primary">3</h2>
+                                <h6>Disease Prediction</h6>
+                                <p class="small">Deep learning predicts possible diseases</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h2 class="text-primary">4</h2>
+                                <h6>Expert Validation</h6>
+                                <p class="small">Questions refine the diagnosis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Technical Specifications</h5>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Component</th>
+                                <th>Technology</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Backend Framework</td>
+                                <td>Flask (Python)</td>
+                                <td>Web application server</td>
+                            </tr>
+                            <tr>
+                                <td>AI Framework</td>
+                                <td>TensorFlow/Keras</td>
+                                <td>Deep learning models</td>
+                            </tr>
+                            <tr>
+                                <td>Database</td>
+                                <td>MySQL</td>
+                                <td>Store expert knowledge and logs</td>
+                            </tr>
+                            <tr>
+                                <td>Frontend</td>
+                                <td>HTML5, CSS3, Bootstrap 5</td>
+                                <td>User interface</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h5 class="mb-3">Supported Crops & Diseases</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">Corn (Maize)</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0">
+                                    <li>Common Rust</li>
+                                    <li>Gray Leaf Spot (GLS)</li>
+                                    <li>Northern Corn Leaf Blight</li>
+                                    <li>Healthy Plant</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Rice</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0">
+                                    <li>Rice Blast</li>
+                                    <li>Bacterial Leaf Blight</li>
+                                    <li>Brown Spot</li>
+                                    <li>Tungro Virus</li>
+                                    <li>Healthy Plant</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning mt-4">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Disclaimer</h6>
+                    <p class="mb-0">
+                        This system is developed for research and educational purposes.
+                        While we strive for accuracy, the diagnosis should be confirmed by
+                        qualified agricultural experts before taking any treatment actions.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

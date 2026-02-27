@@ -1,0 +1,639 @@
+{% extends "base.html" %}
+
+{% block title %}My Diagnosis History - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-history me-3"></i>My Diagnosis History</h2>
+                        <p class="lead mb-0">View all your previous plant diagnoses</p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('saved_diagnoses') }}" class="btn btn-light me-2">
+                            <i class="fas fa-bookmark me-2 text-warning"></i>View Saved
+                        </a>
+                        {% if diagnoses %}
+                        <button class="btn btn-danger" onclick="confirmDeleteAll()" title="Delete all diagnoses">
+                            <i class="fas fa-trash-alt me-2"></i>Delete All
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Error loading diagnoses: {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        {% if diagnoses %}
+            {% for diag in diagnoses %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <!-- Make the entire card clickable -->
+                <div class="card h-100 shadow-sm hover-card clickable-card"
+                     onclick="window.location.href='{{ url_for('view_diagnosis', diagnosis_id=diag.id) }}'"
+                     style="cursor: pointer;">
+
+                    <div class="position-relative">
+                        <!-- Image -->
+                        <img src="{{ url_for('diagnosis_image', diagnosis_id=diag.id) }}"
+                             class="card-img-top"
+                             alt="Plant image"
+                             style="height: 200px; width: 100%; object-fit: cover;"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'200\' viewBox=\'0 0 400 200\'%3E%3Crect width=\'400\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'150\' y=\'110\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+
+                        <!-- Crop badge -->
+                        <span class="position-absolute top-0 start-0 badge bg-primary m-2">
+                            <i class="fas fa-leaf me-1"></i>{{ diag.crop|title }}
+                        </span>
+
+                        <!-- AI Verified Badge -->
+                        <span class="position-absolute top-0 end-0 badge bg-success bg-opacity-90 m-2">
+                            <i class="fas fa-shield-alt me-1"></i>AI Verified
+                        </span>
+
+                        <!-- Action Buttons Container - Bottom of image -->
+                        <div class="position-absolute bottom-0 end-0 m-2 d-flex gap-2">
+                            <!-- Save Button -->
+                            <button class="btn btn-sm btn-light action-btn save-btn"
+                                    onclick="event.stopPropagation(); toggleSave({{ diag.id }}, this)"
+                                    title="Save diagnosis">
+                                <i class="far fa-bookmark"></i>
+                            </button>
+                            <!-- Delete Button -->
+                            <button class="btn btn-sm btn-danger action-btn"
+                                    onclick="event.stopPropagation(); confirmDelete({{ diag.id }}, this)"
+                                    title="Delete diagnosis">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h5 class="card-title text-success mb-3">{{ diag.disease_detected }}</h5>
+
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i> {{ diag.created_at.strftime('%B %d, %Y') if diag.created_at else 'Unknown date' }}<br>
+                                <i class="fas fa-clock me-1"></i> {{ diag.created_at.strftime('%I:%M %p') if diag.created_at else '' }}
+                            </small>
+                        </p>
+                    </div>
+
+                    <div class="card-footer bg-white border-0">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary"
+                                    onclick="event.stopPropagation(); window.location.href='{{ url_for('view_diagnosis', diagnosis_id=diag.id) }}'">
+                                <i class="fas fa-eye me-2"></i>View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-leaf fa-4x text-muted opacity-50"></i>
+                    </div>
+                    <h4 class="text-muted">No Diagnoses Yet</h4>
+                    <p class="text-muted mb-4">Upload a plant image to get your first diagnosis!</p>
+                    <a href="{{ url_for('upload_image') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-upload me-2"></i>Upload Image
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-5">Are you sure you want to delete this diagnosis?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash-alt me-2"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete All Confirmation Modal -->
+<div class="modal fade" id="deleteAllModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete All Diagnoses
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-5 text-danger">Warning: This action cannot be undone!</p>
+                <p>Are you sure you want to delete <strong>ALL</strong> your diagnoses?</p>
+                <p class="text-muted">This will permanently remove {{ diagnoses|length }} diagnosis records and their associated images.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteAllBtn">
+                    <i class="fas fa-trash-alt me-2"></i>Delete All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.clickable-card {
+    cursor: pointer;
+}
+
+.clickable-card .btn {
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+}
+
+.badge {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 20px;
+    z-index: 3;
+}
+
+.bg-opacity-90 {
+    background-color: rgba(40, 167, 69, 0.9) !important;
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.card-img-top {
+    border-top-left-radius: calc(0.25rem - 1px);
+    border-top-right-radius: calc(0.25rem - 1px);
+}
+
+/* Position-absolute elements shouldn't block clicks */
+.position-absolute {
+    pointer-events: none;
+}
+
+.position-absolute .badge {
+    pointer-events: none;
+}
+
+/* Buttons should be clickable */
+.btn {
+    pointer-events: auto;
+}
+
+/* Action buttons styling */
+.action-btn {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.action-btn:hover {
+    transform: scale(1.1);
+    background: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.action-btn i {
+    font-size: 1rem;
+}
+
+/* Save button specific */
+.save-btn i {
+    color: #6c757d;
+}
+
+.save-btn.saved i {
+    color: #ffc107;
+    font-weight: 900;
+}
+
+.save-btn.saved {
+    background: white;
+}
+
+/* Delete button specific */
+.action-btn.btn-danger {
+    background: rgba(220, 53, 69, 0.9);
+}
+
+.action-btn.btn-danger i {
+    color: white;
+}
+
+.action-btn.btn-danger:hover {
+    background: #dc3545;
+}
+
+/* Toast notification */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    color: #333;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+    border-left: 4px solid #28a745;
+}
+
+.toast-notification i {
+    font-size: 1.2rem;
+}
+
+.toast-notification.success i {
+    color: #28a745;
+}
+
+.toast-notification.error i {
+    color: #dc3545;
+}
+
+.toast-notification.warning i {
+    color: #ffc107;
+}
+
+.toast-notification.info i {
+    color: #17a2b8;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(20px); }
+}
+
+/* Card title spacing */
+.card-title {
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* Fade out animation for deleted cards */
+.fade-out {
+    animation: fadeOutCard 0.3s ease forwards;
+}
+
+@keyframes fadeOutCard {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+</style>
+
+<script>
+let deleteDiagnosisId = null;
+
+// Add touch feedback for mobile devices
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.clickable-card');
+
+    cards.forEach(card => {
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        }, {passive: true});
+
+        card.addEventListener('touchend', function() {
+            this.style.transform = '';
+        });
+
+        card.addEventListener('touchcancel', function() {
+            this.style.transform = '';
+        });
+    });
+
+    // Check which diagnoses are already saved
+    checkSavedStatus();
+
+    // Set up modal delete confirmation
+    const modal = document.getElementById('deleteModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            document.getElementById('confirmDeleteBtn').onclick = function() {
+                performDelete();
+            };
+        });
+    }
+
+    // Set up delete all modal
+    const deleteAllModal = document.getElementById('deleteAllModal');
+    if (deleteAllModal) {
+        deleteAllModal.addEventListener('show.bs.modal', function() {
+            document.getElementById('confirmDeleteAllBtn').onclick = function() {
+                performDeleteAll();
+            };
+        });
+    }
+});
+
+// Function to check which diagnoses are saved
+function checkSavedStatus() {
+    // Get all diagnosis IDs from the page
+    const diagnosisIds = [];
+    document.querySelectorAll('.save-btn').forEach(btn => {
+        const onclickAttr = btn.getAttribute('onclick');
+        const match = onclickAttr ? onclickAttr.match(/toggleSave\((\d+)/) : null;
+        if (match) {
+            diagnosisIds.push(match[1]);
+        }
+    });
+
+    if (diagnosisIds.length === 0) return;
+
+    // Fetch saved status from server
+    fetch(`/api/check-saved-status?ids=${diagnosisIds.join(',')}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.saved) {
+                data.saved.forEach(id => {
+                    const btn = Array.from(document.querySelectorAll('.save-btn')).find(btn => {
+                        const onclickAttr = btn.getAttribute('onclick');
+                        return onclickAttr && onclickAttr.includes(`toggleSave(${id}`);
+                    });
+                    if (btn) {
+                        markAsSaved(btn);
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error checking saved status:', error));
+}
+
+// Toggle save status
+function toggleSave(diagnosisId, button) {
+    // Prevent card click
+    event.stopPropagation();
+
+    // Show loading state
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+
+    fetch(`/api/diagnosis/${diagnosisId}/toggle-save`, {  // Fixed: Use toggle-save endpoint
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.saved) {
+                markAsSaved(button);
+                showToast('Diagnosis saved successfully!', 'success');
+            } else {
+                markAsUnsaved(button);
+                showToast('Diagnosis removed from saved', 'success');
+            }
+        } else {
+            throw new Error(data.error || 'Failed to toggle save');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+        showToast('Error: ' + error.message, 'error');
+    });
+}
+
+// Mark button as saved
+function markAsSaved(button) {
+    button.classList.add('saved');
+    button.innerHTML = '<i class="fas fa-bookmark"></i>';
+    button.disabled = false;
+}
+
+// Mark button as unsaved
+function markAsUnsaved(button) {
+    button.classList.remove('saved');
+    button.innerHTML = '<i class="far fa-bookmark"></i>';
+    button.disabled = false;
+}
+
+// Confirm delete for single diagnosis
+function confirmDelete(diagnosisId, button) {
+    event.stopPropagation();
+    deleteDiagnosisId = diagnosisId;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Perform the actual delete
+function performDelete() {
+    if (!deleteDiagnosisId) return;
+
+    // Find the card element - improved card finding
+    const card = document.querySelector(`[onclick*="view_diagnosis?diagnosis_id=${deleteDiagnosisId}"]`)?.closest('.col-md-6');
+
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    if (modal) modal.hide();
+
+    // Show loading state
+    showToast('Deleting diagnosis...', 'info');
+
+    // FIXED: Use the DELETE method with the correct endpoint
+    fetch(`/api/diagnosis/${deleteDiagnosisId}`, {  // Remove /delete, use DELETE method
+        method: 'DELETE',  // Changed from POST to DELETE
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(async response => {
+        const text = await response.text();
+        console.log('Raw response:', text); // Debug log
+
+        try {
+            const data = JSON.parse(text);
+            if (!response.ok) throw new Error(data.error || 'Server error');
+            return data;
+        } catch (e) {
+            console.error('Failed to parse JSON:', text);
+            throw new Error('Server returned invalid response');
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            // Animate and remove the card
+            if (card) {
+                card.classList.add('fade-out');
+                setTimeout(() => {
+                    card.remove();
+
+                    // Check if there are any cards left
+                    const remainingCards = document.querySelectorAll('.col-md-6');
+                    if (remainingCards.length === 0) {
+                        // Reload to show empty state
+                        location.reload();
+                    } else {
+                        showToast('Diagnosis deleted successfully', 'success');
+                    }
+                }, 300);
+            } else {
+                location.reload();
+            }
+        } else {
+            throw new Error(data.error || 'Failed to delete diagnosis');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message, 'error');
+    })
+    .finally(() => {
+        deleteDiagnosisId = null;
+    });
+}
+
+// Confirm delete all diagnoses
+function confirmDeleteAll() {
+    event.preventDefault();
+    const modal = new bootstrap.Modal(document.getElementById('deleteAllModal'));
+    modal.show();
+}
+
+// Perform delete all
+function performDeleteAll() {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAllModal'));
+    if (modal) modal.hide();
+
+    showToast('Deleting all diagnoses...', 'info');
+
+    fetch('/api/diagnosis/delete-all', {
+        method: 'DELETE',  // Changed from POST to DELETE for consistency
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(async response => {
+        const text = await response.text();
+        console.log('Delete all raw response:', text);
+
+        try {
+            const data = JSON.parse(text);
+            if (!response.ok) throw new Error(data.error || 'Server error');
+            return data;
+        } catch (e) {
+            console.error('Failed to parse JSON:', text);
+            throw new Error('Server returned invalid response');
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            showToast('All diagnoses deleted successfully', 'success');
+            // Reload the page to show empty state
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.error || 'Failed to delete diagnoses');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message, 'error');
+    });
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+
+    let icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    if (type === 'warning') icon = 'fa-exclamation-triangle';
+    if (type === 'info') icon = 'fa-info-circle';
+
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span>${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+</script>
+{% endblock %}

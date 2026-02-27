@@ -1,0 +1,235 @@
+{% extends "expert/base_expert.html" %}
+
+{% block title %}Review History - Expert Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Review History</h1>
+    <a href="{{ url_for('expert_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<!-- Filters and Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('expert_history') }}" class="row g-3">
+            <div class="col-md-3">
+                <label for="farmer" class="form-label">Farmer Name</label>
+                <input type="text" class="form-control" id="farmer" name="farmer" placeholder="Search by farmer" value="{{ request.args.get('farmer', '') }}">
+            </div>
+            <div class="col-md-3">
+                <label for="disease" class="form-label">Disease</label>
+                <input type="text" class="form-control" id="disease" name="disease" placeholder="Filter by disease" value="{{ request.args.get('disease', '') }}">
+            </div>
+            <div class="col-md-2">
+                <label for="status" class="form-label">Review Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="all {% if request.args.get('status') == 'all' %}selected{% endif %}">All Reviews</option>
+                    <option value="approved {% if request.args.get('status') == 'approved' %}selected{% endif %}">Approved</option>
+                    <option value="rejected {% if request.args.get('status') == 'rejected' %}selected{% endif %}">Rejected</option>
+                    <option value="pending{% if request.args.get('status') == 'pending' %}selected{% endif %}" >Pending</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ request.args.get('date_from', '') }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ request.args.get('date_to', '') }}">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search me-2"></i>Apply Filters
+                </button>
+                <a href="{{ url_for('expert_history') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i>Clear Filters
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-primary">{{ stats.total_reviews if stats else 0 }}</h3>
+            <p class="text-muted mb-0">Total Reviews</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-success">{{ stats.approved_count if stats else 0 }}</h3>
+            <p class="text-muted mb-0">Approved</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-danger">{{ stats.rejected_count if stats else 0 }}</h3>
+            <p class="text-muted mb-0">Rejected</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <h3 class="text-warning">{{ stats.pending_count if stats else 0 }}</h3>
+            <p class="text-muted mb-0">Pending</p>
+        </div>
+    </div>
+</div>
+
+<!-- Reviews Table -->
+<div class="card">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Review History</h5>
+        <span class="badge bg-light text-dark">{{ total_results }} reviews found</span>
+    </div>
+    <div class="card-body">
+        {% if reviews %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Farmer</th>
+                        <th>Crop</th>
+                        <th>Diagnosis</th>
+                        <th>Review Status</th>
+                        <th>Expert Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review in reviews %}
+                    <tr>
+                        <td>{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <strong>{{ review.farmer_full_name or review.farmer_name }}</strong><br>
+                        </td>
+                        <td>{{ review.crop }}</td>
+                        <td>
+                            {{ review.disease_detected }}
+                            {% if review.alternative_diagnoses %}
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Alternatives: {{ review.alternative_diagnoses }}
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if review.for_training == 1 %}
+                            <span class="badge bg-success">Approved</span>
+                            {% elif review.for_training == 0 %}
+                            <span class="badge bg-danger">Rejected</span>
+                            {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if review.expert_summary %}
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick='viewSummary({{ review.id }}, {{ review.expert_summary|tojson }})'>
+                                <i class="fas fa-file-alt me-1"></i>View Summary
+                            </button>
+                            {% else %}
+                            <span class="text-muted">No summary</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('expert_history', page=page-1, farmer=request.args.get('farmer', ''), disease=request.args.get('disease', ''), status=request.args.get('status', ''), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('expert_history', page=p, farmer=request.args.get('farmer', ''), disease=request.args.get('disease', ''), status=request.args.get('status', ''), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('expert_history', page=page+1, farmer=request.args.get('farmer', ''), disease=request.args.get('disease', ''), status=request.args.get('status', ''), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <p class="text-muted text-center py-5">
+            <i class="fas fa-history fa-3x mb-3"></i><br>
+            No review history found matching your criteria.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Expert Summary</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="summaryContent">
+                <!-- Loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// View summary function
+function viewSummary(reviewId, summaryData) {
+    try {
+        // Parse the summary data if it's a string
+        if (typeof summaryData === 'string') {
+            summaryData = JSON.parse(summaryData);
+        }
+
+        let summaryHtml = '';
+
+        if (summaryData.notes) {
+            summaryHtml += `
+                <div class="mb-3">
+                    <h6 class="text-muted">Expert Notes</h6>
+                    <div class="p-3 bg-light rounded">
+                        ${summaryData.notes.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+        } else {
+            summaryHtml += '<p class="text-muted">No summary available</p>';
+        }
+
+        document.getElementById('summaryContent').innerHTML = summaryHtml;
+        new bootstrap.Modal(document.getElementById('summaryModal')).show();
+    } catch (e) {
+        console.error('Error parsing summary:', e);
+        document.getElementById('summaryContent').innerHTML = '<p class="text-danger">Error loading summary</p>';
+        new bootstrap.Modal(document.getElementById('summaryModal')).show();
+    }
+}
+</script>
+{% endblock %}

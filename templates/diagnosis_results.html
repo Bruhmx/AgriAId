@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Diagnosis Results - AgriAId{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center py-4">
+                    <h2><i class="fas fa-leaf me-3"></i>Diagnosis Results</h2>
+                    <p class="lead mb-0">Detailed analysis of your plant diagnosis</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Image -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-image me-2"></i>Plant Image</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('diagnosis_image', diagnosis_id=result.id) }}"
+                         class="img-fluid rounded shadow"
+                         alt="Plant image"
+                         style="max-height: 400px; width: auto;"
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Not+Found'">
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Basic Info -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Diagnosis Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th style="width: 40%;">Crop:</th>
+                            <td><span class="badge bg-primary p-2">{{ result.crop|title }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Disease Detected:</th>
+                            <td><span class="badge bg-danger p-2">{{ result.disease }}</span></td>
+                        </tr>
+
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if result.final_confidence_level %}
+                                    <span class="badge bg-info p-2">{{ result.final_confidence_level }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary p-2">AI Detected</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td>{{ result.created_at.strftime('%B %d, %Y at %I:%M %p') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symptoms -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Symptoms</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ result.symptoms or 'No symptoms information available' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations - SEPARATED into Manual, Organic, Chemical -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-pills me-2"></i>Treatment Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    {% if result.recommendations %}
+                        <!-- Try to parse recommendations if they're stored with prefixes -->
+                        {% set recommendations_text = result.recommendations %}
+
+                        <!-- Manual Treatment -->
+                        {% if 'Manual:' in recommendations_text %}
+                            {% set manual_part = recommendations_text.split('Manual:')[1].split('Organic:')[0] if 'Organic:' in recommendations_text else recommendations_text.split('Manual:')[1] %}
+                            <div class="mb-4">
+                                <h6 class="text-primary"><i class="fas fa-hands me-2"></i>Manual Treatment</h6>
+                                <div class="p-3 bg-light rounded">
+                                    {{ manual_part|replace('Organic:', '')|replace('Chemical:', '')|trim }}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- Organic Treatment -->
+                        {% if 'Organic:' in recommendations_text %}
+                            {% set organic_part = recommendations_text.split('Organic:')[1].split('Chemical:')[0] if 'Chemical:' in recommendations_text else recommendations_text.split('Organic:')[1] %}
+                            <div class="mb-4">
+                                <h6 class="text-success"><i class="fas fa-leaf me-2"></i>Organic Treatment</h6>
+                                <div class="p-3 bg-light rounded">
+                                    {{ organic_part|replace('Chemical:', '')|trim }}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- Chemical Treatment -->
+                        {% if 'Chemical:' in recommendations_text %}
+                            {% set chemical_part = recommendations_text.split('Chemical:')[1] %}
+                            <div class="mb-4">
+                                <h6 class="text-danger"><i class="fas fa-flask me-2"></i>Chemical Treatment</h6>
+                                <div class="p-3 bg-light rounded">
+                                    {{ chemical_part|trim }}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- If no prefixes found, show as is -->
+                        {% if 'Manual:' not in recommendations_text and 'Organic:' not in recommendations_text and 'Chemical:' not in recommendations_text %}
+                            <div class="p-3 bg-light rounded">
+                                {{ recommendations_text }}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">No recommendations available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expert Answers Section (if available) -->
+    {% if result.expert_answers and result.expert_answers|length > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Expert Validation Answers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Question</th>
+                                    <th style="width: 100px;">Answer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for answer in result.expert_answers %}
+                                <tr>
+                                    <td>{{ answer.question_text }}</td>
+                                    <td>
+                                        <span class="badge
+                                            {% if answer.answer == 'yes' %}bg-success
+                                            {% elif answer.answer == 'no' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}
+                                            p-2 w-100">
+                                            {% if answer.answer == 'yes' %}
+                                                <i class="fas fa-check me-1"></i>Yes
+                                            {% elif answer.answer == 'no' %}
+                                                <i class="fas fa-times me-1"></i>No
+                                            {% else %}
+                                                <i class="fas fa-question me-1"></i>Unsure
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="row">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('my_diagnoses') }}" class="btn btn-primary btn-lg me-2">
+                <i class="fas fa-history me-2"></i>Back to History
+            </a>
+            <a href="{{ url_for('upload_image') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-upload me-2"></i>New Diagnosis
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-lg mt-2 mt-md-0">
+                <i class="fas fa-print me-2"></i>Print Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.progress {
+    border-radius: 25px;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+    border-left: 4px solid;
+}
+
+.bg-light:has(.text-primary) {
+    border-left-color: #0d6efd;
+}
+
+.bg-light:has(.text-success) {
+    border-left-color: #198754;
+}
+
+.bg-light:has(.text-danger) {
+    border-left-color: #dc3545;
+}
+
+h6 i {
+    width: 24px;
+}
+
+/* Print styles */
+@media print {
+    .btn, .card-header {
+        display: none;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        page-break-inside: avoid;
+    }
+
+    .badge {
+        border: 1px solid #000;
+        color: #000 !important;
+        background: #fff !important;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        display: block;
+        width: 100%;
+    }
+
+    .me-2 {
+        margin-right: 0 !important;
+    }
+}
+</style>
+
+<script>
+// Add print functionality
+function printReport() {
+    window.print();
+}
+
+// Add touch feedback for mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        }, {passive: true});
+
+        card.addEventListener('touchend', function() {
+            this.style.transform = '';
+        });
+
+        card.addEventListener('touchcancel', function() {
+            this.style.transform = '';
+        });
+    });
+});
+</script>
+{% endblock %}

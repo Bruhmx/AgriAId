@@ -1,0 +1,517 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Feedback Management - Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Feedback Management</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Feedback</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ feedback|length if feedback else 0 }}</div>
+            <div class="stat-label">Total Feedback</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-warning">
+                {{ feedback|selectattr('status', 'equalto', 'pending')|list|length if feedback else 0 }}
+            </div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">
+                {{ feedback|selectattr('status', 'equalto', 'reviewed')|list|length if feedback else 0 }}
+            </div>
+            <div class="stat-label">Reviewed</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">
+                {{ feedback|selectattr('status', 'equalto', 'resolved')|list|length if feedback else 0 }}
+            </div>
+            <div class="stat-label">Resolved</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="table-container mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <select class="form-select" id="statusFilter" onchange="filterFeedback()">
+                <option value="">All Status</option>
+                <option value="pending {% if request.args.get('status') == 'pending' %}selected{% endif %}">Pending</option>
+                <option value="reviewed {% if request.args.get('status') == 'reviewed' %}selected{% endif %}">Reviewed</option>
+                <option value="resolved {% if request.args.get('status') == 'resolved' %}selected{% endif %}">Resolved</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="categoryFilter" onchange="filterFeedback()">
+                <option value="">All Categories</option>
+                {% set categories = feedback|map(attribute='feedback_type')|unique|list if feedback else [] %}
+                {% for category in categories %}
+                <option value="{{ category }} {% if request.args.get('category') == category %}selected{% endif %}">{{ category|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search feedback..." value="{{ request.args.get('search', '') }}">
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Table -->
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover" id="feedbackTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Type</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in feedback %}
+                <tr>
+                    <td>#{{ item.id }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {% set color_index = (item.user_id or 0) % 10 %}
+                            {% set colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#20c997'] %}
+                            <div class="avatar-circle me-2 d-flex align-items-center justify-content-center text-white rounded-circle"
+                                 style="width: 32px; height: 32px; background: {{ colors[color_index] }}; font-size: 14px; font-weight: bold;">
+                                {% if item.user_id and item.username %}
+                                    {{ item.username[0]|upper }}
+                                {% elif item.full_name %}
+                                    {{ item.full_name[0]|upper }}
+                                {% else %}
+                                    <i class="fas fa-user" style="font-size: 14px;"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <strong>{{ item.full_name or item.name or 'Unknown' }}</strong>
+                                <small class="d-block text-muted">{{ item.email }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% set type_colors = {'bug': 'danger', 'suggestion': 'success', 'comment': 'info'} %}
+                        <span class="badge bg-{{ type_colors.get(item.feedback_type, 'secondary') }}">
+                            {{ item.feedback_type|title }}
+                        </span>
+                    </td>
+                    <td>{{ item.subject }}</td>
+                    <td>
+                        {% set status_colors = {'pending': 'warning', 'reviewed': 'info', 'resolved': 'success'} %}
+                        <span class="badge bg-{{ status_colors.get(item.status, 'secondary') }} status-badge" data-id="{{ item.id }}">
+                            {{ item.status|title if item.status else 'Pending' }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.created_at %}
+                            {% if item.created_at is string %}
+                                {{ item.created_at[:10] }} {{ item.created_at[11:16] }}
+                            {% else %}
+                                {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewFeedback({{ item.id }})" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="replyToFeedback({{ item.id }})" title="Reply">
+                            <i class="fas fa-reply"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="showStatusModal({{ item.id }})" title="Update Status">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4">
+                        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No feedback found</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- View Feedback Modal -->
+<div class="modal fade" id="viewFeedbackModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-comment me-2"></i>Feedback Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="feedbackDetails">
+                <!-- Loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" onclick="showStatusModal(currentFeedbackId)">
+                    <i class="fas fa-edit me-1"></i>Update Status
+                </button>
+                <button type="button" class="btn btn-success" onclick="showReplyModal()">
+                    <i class="fas fa-reply me-1"></i>Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-reply me-2"></i>Reply to Feedback
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="replyForm">
+                    <div class="mb-3">
+                        <label class="form-label">Your Reply</label>
+                        <textarea class="form-control" id="replyText" rows="5" placeholder="Type your reply here..." required></textarea>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="updateStatusOnReply" checked>
+                        <label class="form-check-label" for="updateStatusOnReply">
+                            Automatically mark as "Reviewed" after sending reply
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="sendReply()">
+                    <i class="fas fa-paper-plane me-1"></i>Send Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Update Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="statusForm">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="statusSelect">
+                            <option value="pending">Pending</option>
+                            <option value="reviewed">Reviewed</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="updateStatus()">
+                    <i class="fas fa-save me-1"></i>Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentFeedbackId = null;
+
+function filterFeedback() {
+    const status = document.getElementById('statusFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    const search = document.getElementById('searchInput').value;
+
+    let url = window.location.pathname + '?';
+    const params = [];
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (category) params.push('category=' + encodeURIComponent(category));
+    if (search) params.push('search=' + encodeURIComponent(search));
+
+    url += params.join('&');
+    window.location.href = url;
+}
+
+function viewFeedback(id) {
+    currentFeedbackId = id;
+    fetch(`/admin/feedback/${id}`)
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Unauthorized access. Please login again.');
+                }
+                throw new Error('Failed to load feedback details');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const adminReply = data.admin_response;
+
+            // Format date
+            const createdDate = data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
+
+            // Determine status badge color
+            const statusColor = data.status === 'pending' ? 'warning' :
+                              data.status === 'reviewed' ? 'info' : 'success';
+
+            // Build details HTML
+            const details = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">User Information</h6>
+                        <p><strong>Name:</strong> ${data.full_name || data.name || 'N/A'}</p>
+                        <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+                        ${data.username ? `<p><strong>Username:</strong> @${data.username}</p>` : ''}
+                        ${data.user_type ? `<p><strong>User Type:</strong> ${data.user_type}</p>` : ''}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Feedback Information</h6>
+                        <p><strong>Type:</strong> ${data.feedback_type || 'N/A'}</p>
+                        <p><strong>Subject:</strong> ${data.subject || 'N/A'}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${statusColor}">${data.status || 'N/A'}</span></p>
+                        <p><strong>Date:</strong> ${createdDate}</p>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">Message</h6>
+                    <div class="p-3 bg-light rounded">
+                        ${data.message || 'No message provided'}
+                    </div>
+                </div>
+                ${adminReply ? `
+                <div class="mt-4">
+                    <h6 class="text-muted mb-2">Admin Reply</h6>
+                    <div class="p-3 bg-success bg-opacity-10 rounded">
+                        ${adminReply}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+            document.getElementById('feedbackDetails').innerHTML = details;
+            new bootstrap.Modal(document.getElementById('viewFeedbackModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message);
+            if (error.message.includes('Unauthorized')) {
+                window.location.href = '/login';
+            }
+        });
+}
+
+function replyToFeedback(id) {
+    currentFeedbackId = id;
+    document.getElementById('replyText').value = '';
+    document.getElementById('updateStatusOnReply').checked = true;
+    new bootstrap.Modal(document.getElementById('replyModal')).show();
+}
+
+function showReplyModal() {
+    bootstrap.Modal.getInstance(document.getElementById('viewFeedbackModal')).hide();
+    document.getElementById('replyText').value = '';
+    document.getElementById('updateStatusOnReply').checked = true;
+    new bootstrap.Modal(document.getElementById('replyModal')).show();
+}
+
+function sendReply() {
+    const reply = document.getElementById('replyText').value.trim();
+    const updateStatus = document.getElementById('updateStatusOnReply').checked;
+
+    if (!reply) {
+        alert('Please enter a reply');
+        return;
+    }
+
+    // Show loading state
+    const sendBtn = event.target;
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sending...';
+    sendBtn.disabled = true;
+
+    // First send the reply
+    fetch(`/admin/feedback/${currentFeedbackId}/reply`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reply: reply })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If update status is checked, update status to reviewed
+            if (updateStatus) {
+                return fetch(`/admin/feedback/${currentFeedbackId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: 'reviewed' })
+                });
+            }
+        } else {
+            throw new Error(data.error || 'Failed to send reply');
+        }
+    })
+    .then(statusResponse => {
+        if (statusResponse) {
+            return statusResponse.json();
+        }
+        return { success: true };
+    })
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('replyModal')).hide();
+
+            // Update the status badge in the table if it exists
+            const statusBadge = document.querySelector(`.status-badge[data-id="${currentFeedbackId}"]`);
+            if (statusBadge && updateStatus) {
+                statusBadge.className = 'badge bg-info status-badge';
+                statusBadge.textContent = 'Reviewed';
+                statusBadge.setAttribute('data-status', 'reviewed');
+            }
+
+            // Show success message
+            alert('Reply sent successfully!');
+
+            // Refresh the page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            alert('Failed to update status: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to send reply: ' + error.message);
+    })
+    .finally(() => {
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+    });
+}
+
+function showStatusModal(id) {
+    if (id) {
+        currentFeedbackId = id;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('viewFeedbackModal'))?.hide();
+
+    // Get current status
+    fetch(`/admin/feedback/${currentFeedbackId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('statusSelect').value = data.status || 'pending';
+            new bootstrap.Modal(document.getElementById('statusModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load current status');
+        });
+}
+
+function updateStatus() {
+    const status = document.getElementById('statusSelect').value;
+
+    fetch(`/admin/feedback/${currentFeedbackId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+
+            // Update the status badge in the table
+            const statusBadge = document.querySelector(`.status-badge[data-id="${currentFeedbackId}"]`);
+            if (statusBadge) {
+                const statusColors = {
+                    'pending': 'warning',
+                    'reviewed': 'info',
+                    'resolved': 'success'
+                };
+                statusBadge.className = `badge bg-${statusColors[status]} status-badge`;
+                statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                statusBadge.setAttribute('data-status', status);
+            }
+
+            // Refresh the page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            alert('Failed to update status: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update status');
+    });
+}
+
+// Debounce search
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(filterFeedback, 500);
+});
+
+// Initialize tooltips if needed
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

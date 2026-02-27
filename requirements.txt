@@ -8,7 +8,7 @@ tensorflow==2.20.0
 numpy==1.26.4
 pillow==12.1.0
 sqlalchemy==2.0.46
-mysql-connector-python==8.3.0
+psycopg2-binary==2.9.9
 python-dotenv==1.2.1
 pydantic==2.12.5
 aiofiles==23.2.1

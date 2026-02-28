@@ -3086,5 +3086,321 @@ def register_user_routes(app):
         """Admin - Diagnoses history"""
         return render_template("admin/admin_diagnoses_history.html")
 
+    # ========== SETTINGS ROUTES ==========
+    @app.route('/settings', methods=['GET', 'POST'])
+    @login_required
+    def settings():
+        """User settings page with profile management"""
+        user_id = session.get('user_id')
+
+        if not user_id:
+            return redirect(url_for('login'))
+
+        # Get user information
+        with get_db_cursor() as cur:
+            cur.execute("""
+                SELECT id, username, email, full_name, phone_number, 
+                       location, profile_image, user_type, is_active, 
+                       created_at, last_login, bio, language
+                FROM users WHERE id = %s
+            """, (user_id,))
+            user_row = cur.fetchone()
+            
+            if not user_row:
+                return redirect(url_for('login'))
+            
+            user = {
+                'id': user_row[0],
+                'username': user_row[1],
+                'email': user_row[2],
+                'full_name': user_row[3],
+                'phone_number': user_row[4],
+                'location': user_row[5],
+                'profile_image': user_row[6],
+                'user_type': user_row[7],
+                'is_active': user_row[8],
+                'created_at': user_row[9],
+                'last_login': user_row[10],
+                'bio': user_row[11],
+                'language': user_row[12] if len(user_row) > 12 else 'en'
+            }
+
+            # Get user settings
+            try:
+                cur.execute("SELECT * FROM user_settings WHERE user_id = %s", (user_id,))
+                settings_row = cur.fetchone()
+                if settings_row:
+                    user_settings = {
+                        'email_notifications': settings_row[1],
+                        'email_updates': settings_row[2],
+                        'email_newsletter': settings_row[3],
+                        'email_promotions': settings_row[4],
+                        'app_notifications': settings_row[5],
+                        'app_security': settings_row[6],
+                        'app_reminders': settings_row[7],
+                        'frequency': settings_row[8],
+                        'profile_public': settings_row[9],
+                        'show_diagnosis': settings_row[10],
+                        'data_collection': settings_row[11],
+                        'theme': settings_row[12],
+                        'density': settings_row[13],
+                        'auto_save': settings_row[14],
+                        'show_tips': settings_row[15],
+                        'detailed_results': settings_row[16],
+                        'quick_analysis': settings_row[17],
+                        'default_crop': settings_row[18],
+                        'measurement_unit': settings_row[19]
+                    }
+                else:
+                    # Create default settings if they don't exist
+                    cur.execute("""
+                        INSERT INTO user_settings (user_id) VALUES (%s)
+                    """, (user_id,))
+                    user_settings = {
+                        'email_notifications': True,
+                        'email_updates': True,
+                        'email_newsletter': False,
+                        'email_promotions': False,
+                        'app_notifications': True,
+                        'app_security': True,
+                        'app_reminders': True,
+                        'frequency': 'realtime',
+                        'profile_public': True,
+                        'show_diagnosis': True,
+                        'data_collection': True,
+                        'theme': 'light',
+                        'density': 'comfortable',
+                        'auto_save': True,
+                        'show_tips': True,
+                        'detailed_results': True,
+                        'quick_analysis': False,
+                        'default_crop': '',
+                        'measurement_unit': 'metric'
+                    }
+            except Exception as e:
+                print(f"Error getting user settings: {e}")
+                user_settings = {}
+
+            # Get account statistics
+            cur.execute("""
+                SELECT 
+                    created_at,
+                    last_login,
+                    (SELECT COUNT(*) FROM diagnosis_history WHERE user_id = %s) as total_diagnosis
+                FROM users WHERE id = %s
+            """, (user_id, user_id))
+            stats_row = cur.fetchone()
+            
+            account_stats = {
+                'created_at': stats_row[0],
+                'last_login': stats_row[1],
+                'total_diagnosis': stats_row[2] or 0
+            }
+
+        # Handle form submissions
+        if request.method == 'POST':
+            form_id = request.form.get('form_id')
+            
+            if form_id == 'accountForm':
+                return handle_account_form(user_id, request.form)
+            elif form_id == 'profileForm':
+                return handle_profile_form(user_id, request)
+            elif form_id == 'notificationsForm':
+                return handle_notifications_form(user_id, request.form)
+            elif form_id == 'privacyForm':
+                return handle_privacy_form(user_id, request.form)
+            elif form_id == 'preferencesForm':
+                return handle_preferences_form(user_id, request.form)
+
+        return render_template('settings.html',
+                               user=user,
+                               settings=user_settings,
+                               account_stats=account_stats)
+
+    # ========== SETTINGS FORM HANDLERS ==========
+    def handle_account_form(user_id, form_data):
+        """Handle account form submission"""
+        email = form_data.get('email')
+        current_password = form_data.get('current_password')
+        new_password = form_data.get('new_password')
+        confirm_password = form_data.get('confirm_password')
+
+        with get_db_cursor() as cur:
+            # Update email
+            cur.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
+
+            # Handle password change if provided
+            if current_password and new_password and confirm_password:
+                # Verify current password
+                cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+                user_row = cur.fetchone()
+
+                if user_row and check_password(current_password, user_row[0]):
+                    if new_password == confirm_password:
+                        new_hash = hash_password(new_password)
+                        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, user_id))
+                        flash('Password updated successfully!', 'success')
+                    else:
+                        flash('New passwords do not match!', 'danger')
+                        return redirect(url_for('settings') + '#account')
+                else:
+                    flash('Current password is incorrect!', 'danger')
+                    return redirect(url_for('settings') + '#account')
+
+        flash('Account settings updated successfully!', 'success')
+        return redirect(url_for('settings') + '#account')
+
+    def handle_profile_form(user_id, request):
+        """Handle profile form with image upload"""
+        # Get form data
+        full_name = request.form.get('full_name')
+        phone = request.form.get('phone')
+        location = request.form.get('location')
+        language = request.form.get('language')
+        bio = request.form.get('bio')
+
+        # Get current user data to check existing image
+        with get_db_cursor() as cur:
+            cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
+            user_row = cur.fetchone()
+            old_image = user_row[0] if user_row else None
+
+        # Handle profile image upload
+        profile_image = None
+        if 'profile_image' in request.files:
+            file = request.files['profile_image']
+            if file and file.filename != '':
+                ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+                
+                def allowed_file(filename):
+                    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+                if allowed_file(file.filename):
+                    # Create upload directory if it doesn't exist
+                    upload_folder = 'static/uploads/profiles'
+                    os.makedirs(upload_folder, exist_ok=True)
+
+                    # Generate secure filename
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    new_filename = f"{user_id}_{timestamp}_{filename}"
+
+                    # Full path to save
+                    filepath = os.path.join(upload_folder, new_filename)
+
+                    # Save the file
+                    file.save(filepath)
+
+                    # Delete old profile image if exists
+                    if old_image:
+                        old_filepath = os.path.join('static/uploads/profiles', old_image)
+                        if os.path.exists(old_filepath):
+                            try:
+                                os.remove(old_filepath)
+                            except:
+                                pass
+
+                    profile_image = new_filename
+                else:
+                    flash('Invalid file type. Please upload JPG, PNG, or GIF.', 'danger')
+                    return redirect(url_for('settings') + '#profile')
+
+        # Update user profile
+        with get_db_cursor() as cur:
+            if profile_image:
+                cur.execute("""
+                    UPDATE users 
+                    SET full_name = %s, phone_number = %s, location = %s, 
+                        language = %s, bio = %s, profile_image = %s
+                    WHERE id = %s
+                """, (full_name, phone, location, language, bio, profile_image, user_id))
+            else:
+                cur.execute("""
+                    UPDATE users 
+                    SET full_name = %s, phone_number = %s, location = %s, 
+                        language = %s, bio = %s
+                    WHERE id = %s
+                """, (full_name, phone, location, language, bio, user_id))
+
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('settings') + '#profile')
+
+    def handle_notifications_form(user_id, form_data):
+        """Handle notifications form submission"""
+        # Get checkbox values (checkboxes return 'on' when checked)
+        email_notifications = 1 if form_data.get('email_notifications') == 'on' else 0
+        email_updates = 1 if form_data.get('email_updates') == 'on' else 0
+        email_newsletter = 1 if form_data.get('email_newsletter') == 'on' else 0
+        email_promotions = 1 if form_data.get('email_promotions') == 'on' else 0
+        app_notifications = 1 if form_data.get('app_notifications') == 'on' else 0
+        app_security = 1 if form_data.get('app_security') == 'on' else 0
+        app_reminders = 1 if form_data.get('app_reminders') == 'on' else 0
+        frequency = form_data.get('frequency', 'realtime')
+
+        with get_db_cursor() as cur:
+            cur.execute("""
+                UPDATE user_settings 
+                SET email_notifications = %s,
+                    email_updates = %s,
+                    email_newsletter = %s,
+                    email_promotions = %s,
+                    app_notifications = %s,
+                    app_security = %s,
+                    app_reminders = %s,
+                    frequency = %s
+                WHERE user_id = %s
+            """, (email_notifications, email_updates, email_newsletter, email_promotions,
+                  app_notifications, app_security, app_reminders, frequency, user_id))
+
+        flash('Notification settings updated!', 'success')
+        return redirect(url_for('settings') + '#notifications')
+
+    def handle_privacy_form(user_id, form_data):
+        """Handle privacy form submission"""
+        profile_public = 1 if form_data.get('profile_public') == 'on' else 0
+        show_diagnosis = 1 if form_data.get('show_diagnosis') == 'on' else 0
+        data_collection = 1 if form_data.get('data_collection') == 'on' else 0
+
+        with get_db_cursor() as cur:
+            cur.execute("""
+                UPDATE user_settings 
+                SET profile_public = %s,
+                    show_diagnosis = %s,
+                    data_collection = %s
+                WHERE user_id = %s
+            """, (profile_public, show_diagnosis, data_collection, user_id))
+
+        flash('Privacy settings updated!', 'success')
+        return redirect(url_for('settings') + '#privacy')
+
+    def handle_preferences_form(user_id, form_data):
+        """Handle preferences form submission"""
+        theme = form_data.get('theme', 'light')
+        density = form_data.get('density', 'comfortable')
+        auto_save = 1 if form_data.get('auto_save') == 'on' else 0
+        show_tips = 1 if form_data.get('show_tips') == 'on' else 0
+        detailed_results = 1 if form_data.get('detailed_results') == 'on' else 0
+        quick_analysis = 1 if form_data.get('quick_analysis') == 'on' else 0
+        default_crop = form_data.get('default_crop', '')
+        measurement_unit = form_data.get('measurement_unit', 'metric')
+
+        with get_db_cursor() as cur:
+            cur.execute("""
+                UPDATE user_settings 
+                SET theme = %s,
+                    density = %s,
+                    auto_save = %s,
+                    show_tips = %s,
+                    detailed_results = %s,
+                    quick_analysis = %s,
+                    default_crop = %s,
+                    measurement_unit = %s
+                WHERE user_id = %s
+            """, (theme, density, auto_save, show_tips, detailed_results,
+                  quick_analysis, default_crop, measurement_unit, user_id))
+
+        flash('Preferences updated!', 'success')
+        return redirect(url_for('settings') + '#preferences')
+
     # Return the app
     return app

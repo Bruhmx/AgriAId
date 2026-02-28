@@ -975,7 +975,7 @@ def faq():
 @app.route("/how-it-works")
 def user_guide():
     """User guide / How it works page"""
-    return render_template("user_guide.html")
+    return render_template("user-guide.html")
 
 # ========== TEST AND DEBUG ROUTES ==========
 

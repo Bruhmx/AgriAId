@@ -3758,6 +3758,6 @@ def register_user_routes(app):
             print(f"Expert settings error: {e}")
             flash('Error loading settings', 'danger')
             return redirect(url_for('expert_dashboard'))
-            
+
     # Return the app
     return app

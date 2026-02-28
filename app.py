@@ -76,7 +76,6 @@ def update_diagnosis_with_answers(diagnosis_id, answers_data, summary_data):
     """Update diagnosis with expert answers and summary"""
     try:
         with get_db_cursor() as cur:
-            # Check if columns exist, if not add them (simplified - you may need to run migrations separately)
             cur.execute("""
                 UPDATE diagnosis_history 
                 SET expert_answers = %s,
@@ -955,6 +954,28 @@ def get_diagnosis():
 
 # Register user routes
 register_user_routes(app)
+
+# ========== STATIC PAGES ==========
+@app.route("/privacy")
+def privacy():
+    """Privacy policy page"""
+    return render_template("privacy.html")
+
+@app.route("/terms")
+def terms():
+    """Terms of service page"""
+    return render_template("terms.html")
+
+@app.route("/faq")
+def faq():
+    """FAQ page"""
+    return render_template("faq.html")
+
+@app.route("/user-guide")
+@app.route("/how-it-works")
+def user_guide():
+    """User guide / How it works page"""
+    return render_template("user_guide.html")
 
 # ========== TEST AND DEBUG ROUTES ==========
 

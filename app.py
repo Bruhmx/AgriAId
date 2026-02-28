@@ -973,7 +973,7 @@ def faq():
 
 @app.route("/user-guide")
 @app.route("/how-it-works")
-def user_guide():
+def user-guide():
     """User guide / How it works page"""
     return render_template("user-guide.html")
 

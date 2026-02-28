@@ -2274,13 +2274,21 @@ def register_user_routes(app):
     @admin_required
     def admin_feedback():
         """Admin view to see all feedback"""
+        # Initialize default values
+        feedback_list = []
+        categories = []
+        pending_users = 0
+        pending_feedback = 0
+        pending_diseases = 0
+        pending_reviews = 0
+        
         try:
             # Get filter parameters
             status = request.args.get('status', '')
             category = request.args.get('category', '')
             search = request.args.get('search', '')
 
-            # Base query
+            # Base query for feedback
             query = """
                 SELECT f.id, f.user_id, f.name, f.email, f.feedback_type,
                        f.subject, f.message, f.image_path, f.status,
@@ -2308,9 +2316,9 @@ def register_user_routes(app):
 
             query += " ORDER BY f.created_at DESC"
 
+            # Get feedback data in its own transaction
             with get_db_cursor() as cur:
                 cur.execute(query, params)
-                feedback_list = []
                 for row in cur.fetchall():
                     feedback_list.append({
                         'id': row[0],
@@ -2329,27 +2337,50 @@ def register_user_routes(app):
                         'user_type': row[13]
                     })
 
-                # Get unique categories for filter dropdown
-                cur.execute("SELECT DISTINCT feedback_type FROM feedback")
-                categories = [row[0] for row in cur.fetchall() if row[0]]
+            # Get unique categories in its own transaction
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT DISTINCT feedback_type FROM feedback WHERE feedback_type IS NOT NULL")
+                    categories = [row[0] for row in cur.fetchall()]
+            except Exception as e:
+                print(f"Error getting categories: {e}")
+                categories = []
 
-                # Get sidebar stats
-                cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
-                pending_users = cur.fetchone()[0] or 0
+            # Get sidebar stats - each in its own transaction
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
+                    result = cur.fetchone()
+                    pending_users = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting pending users: {e}")
+                pending_users = 0
 
-                cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
+                    result = cur.fetchone()
+                    pending_feedback = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting pending feedback: {e}")
+                pending_feedback = 0
 
-                # Get pending diseases count
-                try:
+            try:
+                with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE status = 'pending'")
-                    pending_diseases = cur.fetchone()[0] or 0
-                except:
-                    pending_diseases = 0
+                    result = cur.fetchone()
+                    pending_diseases = result[0] if result else 0
+            except Exception:
+                pending_diseases = 0
 
-                # Get pending reviews count
-                cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
-                pending_reviews = cur.fetchone()[0] or 0
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
+                    result = cur.fetchone()
+                    pending_reviews = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting pending reviews: {e}")
+                pending_reviews = 0
 
             sidebar_stats = {
                 'pending_users': pending_users,

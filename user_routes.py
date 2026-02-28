@@ -3402,5 +3402,362 @@ def register_user_routes(app):
         flash('Preferences updated!', 'success')
         return redirect(url_for('settings') + '#preferences')
 
+    # ========== EXPERT DASHBOARD ROUTES ==========
+    @app.route("/expert/dashboard")
+    @login_required
+    @expert_required
+    def expert_dashboard():
+        """Expert dashboard"""
+        try:
+            with get_db_cursor() as cur:
+                # Get expert info
+                cur.execute("""
+                    SELECT username, full_name, email, profile_image, created_at
+                    FROM users WHERE id = %s
+                """, (session['user_id'],))
+                expert_row = cur.fetchone()
+                
+                expert = {
+                    'username': expert_row[0],
+                    'full_name': expert_row[1],
+                    'email': expert_row[2],
+                    'profile_image': expert_row[3],
+                    'created_at': expert_row[4]
+                }
+
+                # Get statistics
+                cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
+                pending_reviews = cur.fetchone()[0] or 0
+
+                cur.execute("SELECT COUNT(*) as count FROM diagnosis_history")
+                total_diagnoses = cur.fetchone()[0] or 0
+
+                cur.execute("SELECT COUNT(*) as count FROM disease_info")
+                disease_count = cur.fetchone()[0] or 0
+
+                # Get recent diagnoses needing review
+                cur.execute("""
+                    SELECT dh.id, dh.crop, dh.disease_detected, dh.confidence, 
+                           dh.created_at, u.username as farmer_name
+                    FROM diagnosis_history dh
+                    JOIN users u ON dh.user_id = u.id
+                    WHERE dh.expert_review_status = 'pending' OR dh.expert_review_status IS NULL
+                    ORDER BY dh.created_at DESC
+                    LIMIT 10
+                """)
+                
+                recent_diagnoses = []
+                for row in cur.fetchall():
+                    recent_diagnoses.append({
+                        'id': row[0],
+                        'crop': row[1],
+                        'disease_detected': row[2],
+                        'confidence': row[3],
+                        'created_at': row[4],
+                        'farmer_name': row[5]
+                    })
+
+            return render_template("expert/dashboard.html",
+                                   expert=expert,
+                                   pending_reviews=pending_reviews,
+                                   total_diagnoses=total_diagnoses,
+                                   disease_count=disease_count,
+                                   recent_diagnoses=recent_diagnoses,
+                                   now=datetime.now())
+
+        except Exception as e:
+            print(f"Expert dashboard error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error loading expert dashboard', 'danger')
+            return redirect(url_for('dashboard'))
+
+    @app.route("/expert/pending-reviews")
+    @login_required
+    @expert_required
+    def expert_pending_reviews():
+        """Expert - View pending diagnoses for review"""
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = 10
+            offset = (page - 1) * per_page
+
+            with get_db_cursor() as cur:
+                # Get total count
+                cur.execute("""
+                    SELECT COUNT(*) as total 
+                    FROM diagnosis_history 
+                    WHERE expert_review_status = 'pending' OR expert_review_status IS NULL
+                """)
+                total = cur.fetchone()[0] or 0
+                total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+                # Get pending diagnoses
+                cur.execute("""
+                    SELECT dh.id, dh.user_id, dh.crop, dh.disease_detected, 
+                           dh.confidence, dh.symptoms, dh.recommendations,
+                           dh.created_at, dh.image_processed,
+                           u.username as farmer_name, u.full_name as farmer_full_name
+                    FROM diagnosis_history dh
+                    JOIN users u ON dh.user_id = u.id
+                    WHERE dh.expert_review_status = 'pending' OR dh.expert_review_status IS NULL
+                    ORDER BY dh.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (per_page, offset))
+
+                diagnoses = []
+                for row in cur.fetchall():
+                    diagnoses.append({
+                        'id': row[0],
+                        'user_id': row[1],
+                        'crop': row[2],
+                        'disease_detected': row[3],
+                        'confidence': row[4],
+                        'symptoms': row[5],
+                        'recommendations': row[6],
+                        'created_at': row[7],
+                        'image_processed': row[8],
+                        'farmer_name': row[9],
+                        'farmer_full_name': row[10]
+                    })
+
+                # Get all diseases for correction dropdown
+                cur.execute("SELECT id, disease_name, crop FROM disease_info ORDER BY crop, disease_name")
+                diseases = []
+                for row in cur.fetchall():
+                    diseases.append({
+                        'id': row[0],
+                        'disease_name': row[1],
+                        'crop': row[2]
+                    })
+
+            return render_template("expert/pending_reviews.html",
+                                   diagnoses=diagnoses,
+                                   page=page,
+                                   total_pages=total_pages,
+                                   total=total,
+                                   diseases=diseases)
+
+        except Exception as e:
+            print(f"Pending reviews error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error loading pending reviews', 'danger')
+            return redirect(url_for('expert_dashboard'))
+
+    @app.route("/expert/history")
+    @login_required
+    @expert_required
+    def expert_history():
+        """Expert - View review history"""
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = 10
+            offset = (page - 1) * per_page
+
+            with get_db_cursor() as cur:
+                # Get total count
+                cur.execute("""
+                    SELECT COUNT(*) as total 
+                    FROM diagnosis_history 
+                    WHERE expert_review_status IS NOT NULL 
+                    AND expert_review_status != 'pending'
+                """)
+                total = cur.fetchone()[0] or 0
+                total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+                # Get review history
+                cur.execute("""
+                    SELECT dh.id, dh.user_id, dh.crop, dh.disease_detected, 
+                           dh.confidence, dh.expert_review_status,
+                           dh.created_at, dh.reviewed_at,
+                           u.username as farmer_name,
+                           ru.username as reviewed_by_name
+                    FROM diagnosis_history dh
+                    JOIN users u ON dh.user_id = u.id
+                    LEFT JOIN users ru ON dh.reviewed_by = ru.id
+                    WHERE dh.expert_review_status IS NOT NULL 
+                    AND dh.expert_review_status != 'pending'
+                    ORDER BY dh.reviewed_at DESC NULLS LAST, dh.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (per_page, offset))
+
+                reviews = []
+                for row in cur.fetchall():
+                    reviews.append({
+                        'id': row[0],
+                        'user_id': row[1],
+                        'crop': row[2],
+                        'disease_detected': row[3],
+                        'confidence': row[4],
+                        'expert_review_status': row[5],
+                        'created_at': row[6],
+                        'reviewed_at': row[7],
+                        'farmer_name': row[8],
+                        'reviewed_by_name': row[9]
+                    })
+
+                # Get statistics
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_reviews,
+                        SUM(CASE WHEN expert_review_status = 'accurate' THEN 1 ELSE 0 END) as approved_count,
+                        SUM(CASE WHEN expert_review_status = 'needs correction' THEN 1 ELSE 0 END) as correction_count,
+                        SUM(CASE WHEN expert_review_status = 'reject' THEN 1 ELSE 0 END) as rejected_count
+                    FROM diagnosis_history 
+                    WHERE expert_review_status IS NOT NULL 
+                    AND expert_review_status != 'pending'
+                """)
+                stats_row = cur.fetchone()
+                stats = {
+                    'total_reviews': stats_row[0] or 0,
+                    'approved_count': stats_row[1] or 0,
+                    'correction_count': stats_row[2] or 0,
+                    'rejected_count': stats_row[3] or 0
+                }
+
+            return render_template("expert/history.html",
+                                   reviews=reviews,
+                                   page=page,
+                                   total_pages=total_pages,
+                                   total_results=total,
+                                   stats=stats)
+
+        except Exception as e:
+            print(f"Expert history error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error loading review history', 'danger')
+            return redirect(url_for('expert_dashboard'))
+
+    @app.route("/expert/questions")
+    @login_required
+    @expert_required
+    def expert_questions():
+        """Expert - Manage questions"""
+        try:
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    SELECT q.id, q.crop, q.disease_code, q.question_text, 
+                           q.question_category, q.display_order, q.created_at,
+                           di.disease_name
+                    FROM questions q
+                    LEFT JOIN disease_info di ON q.crop = di.crop AND q.disease_code = di.disease_code
+                    ORDER BY q.crop, q.disease_code, q.display_order
+                """)
+
+                questions = []
+                for row in cur.fetchall():
+                    questions.append({
+                        'id': row[0],
+                        'crop': row[1],
+                        'disease_code': row[2],
+                        'question_text': row[3],
+                        'question_category': row[4],
+                        'display_order': row[5],
+                        'created_at': row[6],
+                        'disease_name': row[7] or row[2]
+                    })
+
+                # Get unique values for filters
+                cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
+                crops = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
+                diseases = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
+                categories = [row[0] for row in cur.fetchall()]
+
+            return render_template("expert/questions.html",
+                                   questions=questions,
+                                   crops=crops,
+                                   diseases=diseases,
+                                   categories=categories)
+
+        except Exception as e:
+            print(f"Expert questions error: {e}")
+            flash('Error loading questions', 'danger')
+            return redirect(url_for('expert_dashboard'))
+
+    @app.route("/expert/diseases")
+    @login_required
+    @expert_required
+    def expert_diseases():
+        """Expert - Disease library management"""
+        try:
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    SELECT id, crop, disease_code, disease_name, cause, 
+                           symptoms, organic_treatment, chemical_treatment, 
+                           prevention, manual_treatment, created_at
+                    FROM disease_info 
+                    ORDER BY crop, disease_name
+                """)
+
+                diseases = []
+                for row in cur.fetchall():
+                    diseases.append({
+                        'id': row[0],
+                        'crop': row[1],
+                        'disease_code': row[2],
+                        'disease_name': row[3],
+                        'cause': row[4],
+                        'symptoms': row[5],
+                        'organic_treatment': row[6],
+                        'chemical_treatment': row[7],
+                        'prevention': row[8],
+                        'manual_treatment': row[9],
+                        'created_at': row[10]
+                    })
+
+                # Get unique crops for filter
+                cur.execute("SELECT DISTINCT crop FROM disease_info ORDER BY crop")
+                crops = [row[0] for row in cur.fetchall()]
+
+            return render_template("expert/diseases.html",
+                                   diseases=diseases,
+                                   crops=crops)
+
+        except Exception as e:
+            print(f"Expert diseases error: {e}")
+            flash('Error loading diseases', 'danger')
+            return redirect(url_for('expert_dashboard'))
+
+    @app.route("/expert/settings")
+    @login_required
+    @expert_required
+    def expert_settings():
+        """Expert settings page"""
+        try:
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    SELECT id, username, email, full_name, phone_number, 
+                           location, bio, profile_image, created_at, last_login
+                    FROM users 
+                    WHERE id = %s
+                """, (session['user_id'],))
+                user_row = cur.fetchone()
+
+                user = {
+                    'id': user_row[0],
+                    'username': user_row[1],
+                    'email': user_row[2],
+                    'full_name': user_row[3],
+                    'phone': user_row[4],
+                    'location': user_row[5],
+                    'bio': user_row[6],
+                    'profile_image': user_row[7],
+                    'created_at': user_row[8],
+                    'last_login': user_row[9]
+                }
+
+            return render_template("expert/settings.html", user=user)
+
+        except Exception as e:
+            print(f"Expert settings error: {e}")
+            flash('Error loading settings', 'danger')
+            return redirect(url_for('expert_dashboard'))
+            
     # Return the app
     return app

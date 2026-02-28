@@ -1868,6 +1868,18 @@ def register_user_routes(app):
     @admin_required
     def admin_users():
         """Admin - User management with CRUD operations"""
+        # Initialize default values
+        users = []
+        stats = {
+            'total_users': 0, 'farmers': 0, 'experts': 0, 'researchers': 0,
+            'students': 0, 'admins': 0, 'active_today': 0, 'active_users': 0, 'inactive_users': 0
+        }
+        total_users = 0
+        total_pages = 1
+        pending_feedback = 0
+        pending_diseases = 0
+        pending_reviews = 0
+        
         try:
             # Get page and filters
             page = int(request.args.get('page', 1))
@@ -1915,9 +1927,7 @@ def register_user_routes(app):
                 pagination_params = params + [per_page, offset]
 
                 cur.execute(query, pagination_params)
-                users = []
                 for row in cur.fetchall():
-                    # Map ALL columns properly - based on your users table structure
                     users.append({
                         'id': row[0],
                         'username': row[1],
@@ -1936,7 +1946,7 @@ def register_user_routes(app):
                         'language': row[14] if len(row) > 14 else None
                     })
 
-            # Get statistics for cards
+            # Get statistics for cards - in a separate transaction
             with get_db_cursor() as cur:
                 cur.execute("""
                     SELECT 
@@ -1952,32 +1962,45 @@ def register_user_routes(app):
                     FROM users
                 """)
                 stats_row = cur.fetchone()
-                stats = {
-                    'total_users': stats_row[0] or 0,
-                    'farmers': stats_row[1] or 0,
-                    'experts': stats_row[2] or 0,
-                    'researchers': stats_row[3] or 0,
-                    'students': stats_row[4] or 0,
-                    'admins': stats_row[5] or 0,
-                    'active_today': stats_row[6] or 0,
-                    'active_users': stats_row[7] or 0,
-                    'inactive_users': stats_row[8] or 0
-                }
+                if stats_row:
+                    stats = {
+                        'total_users': stats_row[0] or 0,
+                        'farmers': stats_row[1] or 0,
+                        'experts': stats_row[2] or 0,
+                        'researchers': stats_row[3] or 0,
+                        'students': stats_row[4] or 0,
+                        'admins': stats_row[5] or 0,
+                        'active_today': stats_row[6] or 0,
+                        'active_users': stats_row[7] or 0,
+                        'inactive_users': stats_row[8] or 0
+                    }
 
-                # Get pending counts
-                cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+            # Get pending counts - in separate try/except blocks so one failure doesn't break everything
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
+                    result = cur.fetchone()
+                    pending_feedback = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting pending feedback count: {e}")
+                pending_feedback = 0
 
-                # Get pending diseases count
-                try:
+            try:
+                with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE status = 'pending'")
-                    pending_diseases = cur.fetchone()[0] or 0
-                except:
-                    pending_diseases = 0
+                    result = cur.fetchone()
+                    pending_diseases = result[0] if result else 0
+            except Exception:
+                pending_diseases = 0
 
-                # Get pending reviews count
-                cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
-                pending_reviews = cur.fetchone()[0] or 0
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
+                    result = cur.fetchone()
+                    pending_reviews = result[0] if result else 0
+            except Exception as e:
+                print(f"Error getting pending reviews count: {e}")
+                pending_reviews = 0
 
             sidebar_stats = {
                 'pending_users': stats['inactive_users'],

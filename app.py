@@ -973,9 +973,9 @@ def faq():
 
 @app.route("/user-guide")
 @app.route("/how-it-works")
-def user-guide():
+def user_guide():  # Function name with underscore (Python requirement)
     """User guide / How it works page"""
-    return render_template("user-guide.html")
+    return render_template("user-guide.html")  # Template name with hyphen (your file)
 
 # ========== TEST AND DEBUG ROUTES ==========
 

@@ -1602,5 +1602,76 @@ def register_user_routes(app):
             print(f"Feedback stats error: {e}")
             return jsonify({'error': str(e)}), 500
 
+    # ========== ADMIN DASHBOARD ROUTES ==========
+    @app.route("/admin/dashboard")
+    @login_required
+    @admin_required
+    def admin_dashboard():
+        """Admin dashboard"""
+        return render_template("admin/dashboard.html")
+
+    @app.route("/admin/users")
+    @login_required
+    @admin_required
+    def admin_users():
+        """Admin - User management"""
+        return render_template("admin/users.html")
+
+    @app.route("/admin/disease-library")
+    @login_required
+    @admin_required
+    def admin_disease_library():
+        """Admin - Disease library management"""
+        return render_template("admin/admin_disease_library.html")
+
+    @app.route("/admin/history")
+    @login_required
+    @admin_required
+    def admin_history():
+        """Admin - Diagnosis history"""
+        return render_template("admin/admin_history.html")
+
+    @app.route("/admin/analytics")
+    @login_required
+    @admin_required
+    def admin_analytics():
+        """Admin - Analytics"""
+        return render_template("admin/analytics.html")
+
+    @app.route("/admin/settings")
+    @login_required
+    @admin_required
+    def admin_settings():
+        """Admin - Settings"""
+        return render_template("admin/settings.html")
+
+    @app.route("/admin/feedback")
+    @login_required
+    @admin_required
+    def admin_feedback():
+        """Admin - Feedback management"""
+        return render_template("admin/feedback.html")
+
+    @app.route("/admin/system-health")
+    @login_required
+    @admin_required
+    def admin_system_health():
+        """Admin - System health"""
+        return render_template("admin/admin_system_health.html")
+
+    @app.route("/admin/activity-logs")
+    @login_required
+    @admin_required
+    def admin_activity_logs():
+        """Admin - Activity logs"""
+        return render_template("admin/admin_activity_logs.html")
+
+    @app.route("/admin/diagnoses-history")
+    @login_required
+    @admin_required
+    def admin_diagnoses_history():
+        """Admin - Diagnoses history"""
+        return render_template("admin/admin_diagnoses_history.html")
+
     # Return the app
     return app

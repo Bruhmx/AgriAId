@@ -1917,18 +1917,23 @@ def register_user_routes(app):
                 cur.execute(query, pagination_params)
                 users = []
                 for row in cur.fetchall():
+                    # Map ALL columns properly - based on your users table structure
                     users.append({
                         'id': row[0],
                         'username': row[1],
                         'email': row[2],
+                        'password_hash': row[3],
                         'full_name': row[4],
                         'user_type': row[5],
                         'phone_number': row[6],
                         'location': row[7],
                         'profile_image': row[8],
+                        'bio': row[9],
                         'is_active': row[10],
                         'created_at': row[11],
-                        'last_login': row[12]
+                        'last_login': row[12],
+                        'updated_at': row[13],
+                        'language': row[14] if len(row) > 14 else None
                     })
 
             # Get statistics for cards

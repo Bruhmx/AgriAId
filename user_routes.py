@@ -3541,13 +3541,14 @@ def register_user_routes(app):
                         'farmer_full_name': row[10]
                     })
 
-                # Get all diseases for correction dropdown
-                cur.execute("SELECT id, disease_name, crop FROM disease_info ORDER BY crop, disease_name")
+                # Get all diseases for correction dropdown - use disease_code instead of disease_name
+                cur.execute("SELECT id, disease_code, crop FROM disease_info ORDER BY crop, disease_code")
                 diseases = []
                 for row in cur.fetchall():
                     diseases.append({
                         'id': row[0],
-                        'disease_name': row[1],
+                        'disease_code': row[1],
+                        'disease_name': row[1].replace('_', ' ').title(),  # Convert to readable name
                         'crop': row[2]
                     })
 
@@ -3659,10 +3660,8 @@ def register_user_routes(app):
             with get_db_cursor() as cur:
                 cur.execute("""
                     SELECT q.id, q.crop, q.disease_code, q.question_text, 
-                           q.question_category, q.display_order, q.created_at,
-                           di.disease_name
+                           q.question_category, q.display_order, q.created_at
                     FROM questions q
-                    LEFT JOIN disease_info di ON q.crop = di.crop AND q.disease_code = di.disease_code
                     ORDER BY q.crop, q.disease_code, q.display_order
                 """)
 
@@ -3672,11 +3671,11 @@ def register_user_routes(app):
                         'id': row[0],
                         'crop': row[1],
                         'disease_code': row[2],
+                        'disease_name': row[2].replace('_', ' ').title() if row[2] else 'N/A',
                         'question_text': row[3],
                         'question_category': row[4],
                         'display_order': row[5],
-                        'created_at': row[6],
-                        'disease_name': row[7] or row[2]
+                        'created_at': row[6]
                     })
 
                 # Get unique values for filters
@@ -3697,6 +3696,8 @@ def register_user_routes(app):
 
         except Exception as e:
             print(f"Expert questions error: {e}")
+            import traceback
+            traceback.print_exc()
             flash('Error loading questions', 'danger')
             return redirect(url_for('expert_dashboard'))
 
@@ -3708,11 +3709,11 @@ def register_user_routes(app):
         try:
             with get_db_cursor() as cur:
                 cur.execute("""
-                    SELECT id, crop, disease_code, disease_name, cause, 
+                    SELECT id, crop, disease_code, cause, 
                            symptoms, organic_treatment, chemical_treatment, 
                            prevention, manual_treatment, created_at
                     FROM disease_info 
-                    ORDER BY crop, disease_name
+                    ORDER BY crop, disease_code
                 """)
 
                 diseases = []
@@ -3721,14 +3722,14 @@ def register_user_routes(app):
                         'id': row[0],
                         'crop': row[1],
                         'disease_code': row[2],
-                        'disease_name': row[3],
-                        'cause': row[4],
-                        'symptoms': row[5],
-                        'organic_treatment': row[6],
-                        'chemical_treatment': row[7],
-                        'prevention': row[8],
-                        'manual_treatment': row[9],
-                        'created_at': row[10]
+                        'disease_name': row[2].replace('_', ' ').title(),  # Convert code to readable name
+                        'cause': row[3],
+                        'symptoms': row[4],
+                        'organic_treatment': row[5],
+                        'chemical_treatment': row[6],
+                        'prevention': row[7],
+                        'manual_treatment': row[8],
+                        'created_at': row[9]
                     })
 
                 # Get unique crops for filter
@@ -3741,6 +3742,8 @@ def register_user_routes(app):
 
         except Exception as e:
             print(f"Expert diseases error: {e}")
+            import traceback
+            traceback.print_exc()
             flash('Error loading diseases', 'danger')
             return redirect(url_for('expert_dashboard'))
 
@@ -3772,10 +3775,14 @@ def register_user_routes(app):
                     'last_login': user_row[9]
                 }
 
-            return render_template("expert/settings.html", user=user)
+            return render_template("expert/settings.html", 
+                                   user=user,
+                                   now=datetime.now())  # Add now parameter
 
         except Exception as e:
             print(f"Expert settings error: {e}")
+            import traceback
+            traceback.print_exc()
             flash('Error loading settings', 'danger')
             return redirect(url_for('expert_dashboard'))
 

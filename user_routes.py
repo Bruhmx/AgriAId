@@ -79,6 +79,26 @@ def register_user_routes(app):
             print(f"Error getting pending count: {e}")
             return 0
 
+    # ========== CONTEXT PROCESSOR FOR EXPERT PENDING COUNT ==========
+    @app.context_processor
+    def inject_expert_pending_count():
+        """Make pending_count available to all expert templates"""
+        if session.get('user_type') in ['expert', 'admin']:
+            try:
+                with get_db_cursor() as cur:
+                    cur.execute("""
+                        SELECT COUNT(*) as count 
+                        FROM diagnosis_history 
+                        WHERE expert_review_status = 'pending' OR expert_review_status IS NULL
+                    """)
+                    result = cur.fetchone()
+                    pending_count = result[0] if result else 0
+                    return {'pending_count': pending_count}
+            except Exception as e:
+                print(f"Error getting pending count: {e}")
+                return {'pending_count': 0}
+        return {'pending_count': 0}
+
     # ========== AUTHENTICATION ROUTES ==========
 
     @app.route("/register", methods=["GET", "POST"])

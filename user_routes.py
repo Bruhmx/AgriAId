@@ -3940,14 +3940,18 @@ def register_user_routes(app):
                 """, (session['user_id'],))
                 user_row = cur.fetchone()
 
+                if not user_row:
+                    flash('User not found', 'danger')
+                    return redirect(url_for('expert_dashboard'))
+
                 user = {
                     'id': user_row[0],
                     'username': user_row[1],
                     'email': user_row[2],
-                    'full_name': user_row[3],
-                    'phone': user_row[4],
-                    'location': user_row[5],
-                    'bio': user_row[6],
+                    'full_name': user_row[3] or '',
+                    'phone': user_row[4] or '',
+                    'location': user_row[5] or '',
+                    'bio': user_row[6] or '',
                     'profile_image': user_row[7],
                     'created_at': user_row[8],
                     'last_login': user_row[9]
@@ -3955,7 +3959,7 @@ def register_user_routes(app):
 
             return render_template("expert/settings.html", 
                                    user=user,
-                                   now=datetime.now())  # Add now parameter
+                                   now=datetime.now())
 
         except Exception as e:
             print(f"Expert settings error: {e}")
@@ -3963,6 +3967,154 @@ def register_user_routes(app):
             traceback.print_exc()
             flash('Error loading settings', 'danger')
             return redirect(url_for('expert_dashboard'))
+
+                @app.route("/expert/settings/update", methods=["POST"])
+    @login_required
+    @expert_required
+    def expert_update_profile():
+        """Update expert profile"""
+        try:
+            full_name = request.form.get('full_name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            location = request.form.get('location')
+            bio = request.form.get('bio')
+
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET full_name = %s, email = %s, phone_number = %s, 
+                        location = %s, bio = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, (full_name, email, phone, location, bio, session['user_id']))
+
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('expert_settings'))
+
+        except Exception as e:
+            print(f"Expert update profile error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error updating profile', 'danger')
+            return redirect(url_for('expert_settings'))
+
+    @app.route("/expert/change-password", methods=["POST"])
+    @login_required
+    @expert_required
+    def expert_change_password():
+        """Change expert password"""
+        try:
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+
+            # Validation
+            if new_password != confirm_password:
+                flash('New passwords do not match!', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            if len(new_password) < 8:
+                flash('Password must be at least 8 characters long!', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            with get_db_cursor() as cur:
+                # Get current password hash
+                cur.execute("SELECT password_hash FROM users WHERE id = %s", (session['user_id'],))
+                user_row = cur.fetchone()
+
+                if not user_row or not check_password(current_password, user_row[0]):
+                    flash('Current password is incorrect!', 'danger')
+                    return redirect(url_for('expert_settings'))
+
+                # Update password
+                new_hash = hash_password(new_password)
+                cur.execute("UPDATE users SET password_hash = %s WHERE id = %s",
+                            (new_hash, session['user_id']))
+
+            flash('Password changed successfully!', 'success')
+            return redirect(url_for('expert_settings'))
+
+        except Exception as e:
+            print(f"Expert change password error: {e}")
+            flash('Failed to change password!', 'danger')
+            return redirect(url_for('expert_settings'))
+
+    @app.route("/expert/profile/upload-image", methods=["POST"])
+    @login_required
+    @expert_required
+    def expert_upload_image():
+        """Upload profile image for expert"""
+        user_id = session['user_id']
+
+        try:
+            if 'profile_image' not in request.files:
+                flash('No file uploaded', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            file = request.files['profile_image']
+
+            if file.filename == '':
+                flash('No file selected', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            # Validate file type
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+            if not allowed_file(file.filename, {'ALLOWED_EXTENSIONS': allowed_extensions}):
+                flash('Invalid file type. Please upload JPG, PNG, or GIF', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            # Validate file size (max 2MB)
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+
+            if file_size > 2 * 1024 * 1024:
+                flash('File size must be less than 2MB', 'danger')
+                return redirect(url_for('expert_settings'))
+
+            # Get current user to delete old image
+            with get_db_cursor() as cur:
+                cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
+                user_row = cur.fetchone()
+                old_image = user_row[0] if user_row else None
+
+            # Delete old image if exists
+            if old_image:
+                old_image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles', old_image)
+                if os.path.exists(old_image_path):
+                    try:
+                        os.remove(old_image_path)
+                    except:
+                        pass
+
+            # Save new image
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = secure_filename(f"{user_id}_{timestamp}_{file.filename}")
+
+            upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles')
+            os.makedirs(upload_folder, exist_ok=True)
+
+            filepath = os.path.join(upload_folder, filename)
+            file.save(filepath)
+
+            # Update database
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET profile_image = %s, updated_at = NOW() 
+                    WHERE id = %s
+                """, (filename, user_id))
+
+            # Update session
+            session['profile_image'] = filename
+
+            flash('Profile image updated successfully!', 'success')
+            return redirect(url_for('expert_settings'))
+
+        except Exception as e:
+            print(f"Upload image error: {e}")
+            flash('Error uploading image', 'danger')
+            return redirect(url_for('expert_settings'))
 
     # Return the app
     return app

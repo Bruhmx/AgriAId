@@ -3658,27 +3658,51 @@ def register_user_routes(app):
         """Expert - Manage questions"""
         try:
             with get_db_cursor() as cur:
-                cur.execute("""
-                    SELECT q.id, q.crop, q.disease_code, q.question_text, 
-                           q.question_category, q.display_order, q.created_at
-                    FROM questions q
-                    ORDER BY q.crop, q.disease_code, q.display_order
-                """)
+                # Get filter parameters
+                selected_crop = request.args.get('crop', '')
+                selected_disease = request.args.get('disease', '')
+                selected_category = request.args.get('category', '')
 
+                # Build query with filters
+                query = """
+                    SELECT q.id, q.crop, q.disease_code, q.question_text, 
+                           q.question_category, q.display_order, q.created_at,
+                           di.disease_name
+                    FROM questions q
+                    LEFT JOIN disease_info di ON q.crop = di.crop AND q.disease_code = di.disease_code
+                    WHERE 1=1
+                """
+                params = []
+
+                if selected_crop:
+                    query += " AND q.crop = %s"
+                    params.append(selected_crop)
+
+                if selected_disease:
+                    query += " AND q.disease_code = %s"
+                    params.append(selected_disease)
+
+                if selected_category:
+                    query += " AND q.question_category = %s"
+                    params.append(selected_category)
+
+                query += " ORDER BY q.crop, q.disease_code, q.display_order, q.id"
+
+                cur.execute(query, params)
                 questions = []
                 for row in cur.fetchall():
                     questions.append({
                         'id': row[0],
                         'crop': row[1],
                         'disease_code': row[2],
-                        'disease_name': row[2].replace('_', ' ').title() if row[2] else 'N/A',
+                        'disease_name': row[7] or row[2].replace('_', ' ').title(),
                         'question_text': row[3],
                         'question_category': row[4],
                         'display_order': row[5],
                         'created_at': row[6]
                     })
 
-                # Get unique values for filters
+                # Get unique values for filter dropdowns
                 cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
                 crops = [row[0] for row in cur.fetchall()]
 
@@ -3692,7 +3716,11 @@ def register_user_routes(app):
                                    questions=questions,
                                    crops=crops,
                                    diseases=diseases,
-                                   categories=categories)
+                                   categories=categories,
+                                   selected_crop=selected_crop,
+                                   selected_disease=selected_disease,
+                                   selected_category=selected_category,
+                                   now=datetime.now())
 
         except Exception as e:
             print(f"Expert questions error: {e}")
@@ -3700,6 +3728,158 @@ def register_user_routes(app):
             traceback.print_exc()
             flash('Error loading questions', 'danger')
             return redirect(url_for('expert_dashboard'))
+
+    @app.route("/expert/questions/add", methods=["GET", "POST"])
+    @login_required
+    @expert_required
+    def expert_add_question():
+        """Add a new question"""
+        if request.method == "GET":
+            # Show add form
+            with get_db_cursor() as cur:
+                # Get existing crops, diseases, and categories for dropdowns
+                cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
+                crops = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
+                diseases = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
+                categories = [row[0] for row in cur.fetchall()]
+
+            return render_template("expert/add_question.html",
+                                   crops=crops,
+                                   diseases=diseases,
+                                   categories=categories,
+                                   now=datetime.now())
+
+        # POST - Process form
+        try:
+            crop = request.form.get('crop')
+            disease_code = request.form.get('disease_code')
+            question_text = request.form.get('question_text')
+            question_category = request.form.get('question_category')
+            display_order = request.form.get('display_order', 0)
+
+            # Validate
+            if not all([crop, disease_code, question_text, question_category]):
+                flash('All fields are required', 'danger')
+                return redirect(url_for('expert_add_question'))
+
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    INSERT INTO questions 
+                    (crop, disease_code, question_text, question_category, display_order, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """, (crop, disease_code, question_text, question_category, display_order))
+
+            flash('Question added successfully!', 'success')
+            return redirect(url_for('expert_questions'))
+
+        except Exception as e:
+            print(f"Add question error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error adding question', 'danger')
+            return redirect(url_for('expert_add_question'))
+
+    @app.route("/expert/questions/edit/<int:question_id>", methods=["GET", "POST"])
+    @login_required
+    @expert_required
+    def expert_edit_question(question_id):
+        """Edit an existing question"""
+        if request.method == "GET":
+            # Get question details
+            with get_db_cursor() as cur:
+                cur.execute("SELECT * FROM questions WHERE id = %s", (question_id,))
+                question_row = cur.fetchone()
+                
+                if not question_row:
+                    flash('Question not found', 'danger')
+                    return redirect(url_for('expert_questions'))
+
+                # Convert to dict
+                question = {
+                    'id': question_row[0],
+                    'crop': question_row[1],
+                    'disease_code': question_row[2],
+                    'question_text': question_row[3],
+                    'yes_score': question_row[4],
+                    'no_score': question_row[5],
+                    'question_category': question_row[6],
+                    'priority': question_row[7],
+                    'depends_on': question_row[8],
+                    'show_if_answer': question_row[9],
+                    'display_order': question_row[10],
+                    'created_at': question_row[11]
+                }
+
+                # Get existing crops, diseases, and categories for dropdowns
+                cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
+                crops = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
+                diseases = [row[0] for row in cur.fetchall()]
+
+                cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
+                categories = [row[0] for row in cur.fetchall()]
+
+            return render_template("expert/edit_question.html",
+                                   question=question,
+                                   crops=crops,
+                                   diseases=diseases,
+                                   categories=categories,
+                                   now=datetime.now())
+
+        # POST - Update question
+        try:
+            crop = request.form.get('crop')
+            disease_code = request.form.get('disease_code')
+            question_text = request.form.get('question_text')
+            question_category = request.form.get('question_category')
+            display_order = request.form.get('display_order', 0)
+
+            # Validate required fields
+            if not all([crop, disease_code, question_text, question_category]):
+                flash('All required fields must be filled out!', 'danger')
+                return redirect(url_for('expert_edit_question', question_id=question_id))
+
+            with get_db_cursor() as cur:
+                cur.execute("""
+                    UPDATE questions 
+                    SET crop = %s, 
+                        disease_code = %s, 
+                        question_text = %s, 
+                        question_category = %s, 
+                        display_order = %s
+                    WHERE id = %s
+                """, (crop, disease_code, question_text, question_category, display_order, question_id))
+
+            flash('Question updated successfully!', 'success')
+            return redirect(url_for('expert_questions'))
+
+        except Exception as e:
+            print(f"Edit question error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash(f'Error updating question: {str(e)}', 'danger')
+            return redirect(url_for('expert_edit_question', question_id=question_id))
+
+    @app.route("/expert/questions/delete/<int:question_id>", methods=["POST"])
+    @login_required
+    @expert_required
+    def expert_delete_question(question_id):
+        """Delete a question"""
+        try:
+            with get_db_cursor() as cur:
+                cur.execute("DELETE FROM questions WHERE id = %s", (question_id,))
+
+            flash('Question deleted successfully!', 'success')
+            return jsonify({'success': True})
+
+        except Exception as e:
+            print(f"Delete question error: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
     @app.route("/expert/diseases")
     @login_required

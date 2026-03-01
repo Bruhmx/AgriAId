@@ -3968,7 +3968,7 @@ def register_user_routes(app):
             flash('Error loading settings', 'danger')
             return redirect(url_for('expert_dashboard'))
 
-                @app.route("/expert/settings/update", methods=["POST"])
+    @app.route("/expert/settings/update", methods=["POST"])
     @login_required
     @expert_required
     def expert_update_profile():

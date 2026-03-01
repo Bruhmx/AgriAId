@@ -3663,13 +3663,11 @@ def register_user_routes(app):
                 selected_disease = request.args.get('disease', '')
                 selected_category = request.args.get('category', '')
 
-                # Build query with filters
+                # Build query with filters - REMOVED the LEFT JOIN to disease_info
                 query = """
                     SELECT q.id, q.crop, q.disease_code, q.question_text, 
-                           q.question_category, q.display_order, q.created_at,
-                           di.disease_name
+                           q.question_category, q.display_order, q.created_at
                     FROM questions q
-                    LEFT JOIN disease_info di ON q.crop = di.crop AND q.disease_code = di.disease_code
                     WHERE 1=1
                 """
                 params = []
@@ -3695,7 +3693,7 @@ def register_user_routes(app):
                         'id': row[0],
                         'crop': row[1],
                         'disease_code': row[2],
-                        'disease_name': row[7] or row[2].replace('_', ' ').title(),
+                        'disease_name': row[2].replace('_', ' ').title() if row[2] else 'N/A',
                         'question_text': row[3],
                         'question_category': row[4],
                         'display_order': row[5],

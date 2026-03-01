@@ -22,27 +22,28 @@
         </div>
     </div>
 
-
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <h6 class="card-title mb-3"><i class="fas fa-filter me-2"></i>Filter by Crop</h6>
-                <div class="btn-group" role="group">
-                    <a href="{{ url_for('expert_disease_library') }}?crop=corn"
-                       class="btn btn-outline-success {{ 'active' if crop == 'corn' else '' }}">
-                        <i class="fas fa-corn me-2"></i>Corn
-                        {% if crop_stats and crop_stats.corn_count %}
-                        <span class="badge bg-success ms-2">{{ crop_stats.corn_count }}</span>
-                        {% endif %}
-                    </a>
-                    <a href="{{ url_for('expert_disease_library') }}?crop=rice"
-                       class="btn btn-outline-success {{ 'active' if crop == 'rice' else '' }}">
-                        <i class="fas fa-rice me-2"></i>Rice
-                        {% if crop_stats and crop_stats.rice_count %}
-                        <span class="badge bg-success ms-2">{{ crop_stats.rice_count }}</span>
-                        {% endif %}
-                    </a>
+    <!-- Filter Row - FIXED: Changed expert_disease_library to expert_diseases -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3"><i class="fas fa-filter me-2"></i>Filter by Crop</h6>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('expert_diseases') }}?crop=corn"
+                           class="btn btn-outline-success {{ 'active' if crop == 'corn' else '' }}">
+                            <i class="fas fa-corn me-2"></i>Corn
+                            {% if crop_stats and crop_stats.corn_count %}
+                            <span class="badge bg-success ms-2">{{ crop_stats.corn_count }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="{{ url_for('expert_diseases') }}?crop=rice"
+                           class="btn btn-outline-success {{ 'active' if crop == 'rice' else '' }}">
+                            <i class="fas fa-rice me-2"></i>Rice
+                            {% if crop_stats and crop_stats.rice_count %}
+                            <span class="badge bg-success ms-2">{{ crop_stats.rice_count }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -59,7 +60,7 @@
                         <!-- UPDATED: Use the image serving route for BLOB images -->
                         <img src="{% if disease.sample_image %}{{ disease.sample_image }}{% else %}{{ url_for('static', filename='img/disease-placeholder.jpg') }}{% endif %}"
                              class="img-fluid rounded-start h-100"
-                             alt="{{ disease.disease_name|default(disease.disease_code) }}"
+                             alt="{{ disease.disease_code|replace('_', ' ')|title }}"
                              style="object-fit: cover; height: 100%; width: 100%; min-height: 200px;"
                              onerror="this.src='{{ url_for('static', filename='img/disease-placeholder.jpg') }}'">
                         {% if disease.sample_count %}
@@ -118,14 +119,14 @@
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
+    <!-- Pagination - FIXED: Changed expert_disease_library to expert_diseases -->
     {% if pagination and pagination.pages > 1 %}
     <div class="row mt-4">
         <div class="col-12">
             <nav aria-label="Disease library pagination">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-                        <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=pagination.prev_num) }}">
+                        <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=pagination.prev_num) }}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -133,7 +134,7 @@
                     {% for page_num in pagination.iter_pages() %}
                         {% if page_num %}
                             <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                                <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=page_num) }}">
+                                <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=page_num) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -145,7 +146,7 @@
                     {% endfor %}
 
                     <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-                        <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=pagination.next_num) }}">
+                        <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=pagination.next_num) }}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
@@ -488,7 +489,6 @@
                     <input type="hidden" id="diseaseId" name="diseaseId">
                     <input type="hidden" id="originalDiseaseCode" name="originalDiseaseCode">
                     <input type="hidden" id="originalCrop" name="originalCrop">
-                    <!-- REMOVED: sample_image hidden field - we'll use BLOB storage -->
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -618,7 +618,6 @@
             </div>
         </div>
     </div>
-</div>
 </div>
 
 <script>

@@ -4,8 +4,6 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Page Header -->
-
     <!-- Stats Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
@@ -89,18 +87,11 @@
                         <div class="col-md-2">
                             <label class="form-label">Expert Review</label>
                             <select name="expert_review_status" class="form-select">
+                                <option value="">All</option>
                                 <option value="accurate {% if filters.expert_review_status == 'accurate' %}selected{% endif %}">✅ Accurate</option>
                                 <option value="needs correction {% if filters.expert_review_status == 'needs correction' %}selected{% endif %}">🔄 Needs Correction</option>
                                 <option value="reject {% if filters.expert_review_status == 'reject' %}selected{% endif %}">❌ Rejected</option>
                                 <option value="pending {% if filters.expert_review_status == 'pending' %}selected{% endif %}">⏳ Pending</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Image Processed</label>
-                            <select name="image_processed" class="form-select">
-                                <option value="">All</option>
-                                <option value="1 {% if filters.image_processed == '1' %}selected{% endif %}">✅ Processed</option>
-                                <option value="0 {% if filters.image_processed == '0' %}selected{% endif %}">❌ Not Processed</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -111,10 +102,6 @@
                                 <option value="{{ crop }}" {% if filters.crop == crop %}selected{% endif %}>{{ crop|title }}</option>
                                 {% endfor %}
                             </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Farmer</label>
-                            <input type="text" name="farmer" class="form-control" placeholder="Username" value="{{ filters.farmer or '' }}">
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary me-2 w-100">
@@ -151,10 +138,9 @@
                             <th>Crop</th>
                             <th>Disease</th>
                             <th>Confidence %</th>
+                            <th>Final Confidence</th>
                             <th>Expert Review</th>
                             <th>Expert Answers</th>
-                            <th>Expert Summary</th>
-                            <th>Image Processed</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
@@ -168,29 +154,36 @@
                         }}">
                             <td>#{{ diag.id }}</td>
                             <td>
-                                <img src="/api/diagnosis/{{ diag.id }}/image"
+                                {% if diag.image_path %}
+                                <img src="{{ url_for('static', filename='uploads/' + diag.image_path) }}"
                                      style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer;"
-                                     onclick="showImageModal('/api/diagnosis/{{ diag.id }}/image')"
+                                     onclick="showImageModal('{{ url_for('static', filename='uploads/' + diag.image_path) }}')"
                                      onerror="this.onerror=null; this.src='https://via.placeholder.com/50x50?text=No+Image';"
                                      class="img-thumbnail"
                                      alt="Diagnosis Image">
+                                {% else %}
+                                <img src="https://via.placeholder.com/50x50?text=No+Image"
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"
+                                     class="img-thumbnail"
+                                     alt="No Image">
+                                {% endif %}
                             </td>
                             <td>
-                                <strong>{{ diag.farmer_name }}</strong><br>
+                                <strong>{{ diag.farmer_name or 'Unknown' }}</strong><br>
                                 <small class="text-muted">ID: {{ diag.user_id }}</small>
                             </td>
-                            <td><span class="badge bg-info">{{ diag.crop }}</span></td>
+                            <td><span class="badge bg-info">{{ diag.crop or 'N/A' }}</span></td>
                             <td>
-                                {{ diag.disease_detected }}
+                                {{ diag.disease_detected or 'N/A' }}
                                 {% if diag.for_training == 1 %}
                                 <br><span class="badge bg-success">For Training</span>
                                 {% endif %}
                             </td>
                             <td>
                                 <div class="progress" style="height: 20px; width: 100px;">
-                                    <div class="progress-bar {{ 'bg-success' if diag.confidence > 80 else 'bg-warning' if diag.confidence > 60 else 'bg-danger' }}"
-                                         style="width: {{ diag.confidence }}%">
-                                        {{ "%.1f"|format(diag.confidence) }}%
+                                    <div class="progress-bar {{ 'bg-success' if diag.confidence and diag.confidence > 80 else 'bg-warning' if diag.confidence and diag.confidence > 60 else 'bg-danger' }}"
+                                         style="width: {{ diag.confidence or 0 }}%">
+                                        {{ "%.1f"|format(diag.confidence or 0) }}%
                                     </div>
                                 </div>
                             </td>
@@ -222,24 +215,7 @@
                                 <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                {% if diag.expert_summary %}
-                                <button class="btn btn-sm btn-outline-info view-summary-btn"
-                                        data-summary='{{ diag.expert_summary|tojson|safe }}'>
-                                    <i class="fas fa-file-alt"></i> View
-                                </button>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if diag.image_processed == 1 %}
-                                <span class="badge bg-success">✅ Yes</span>
-                                {% else %}
-                                <span class="badge bg-secondary">❌ No</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ diag.created_at.strftime('%Y-%m-%d %H:%M') if diag.created_at }}</td>
+                            <td>{{ diag.created_at.strftime('%Y-%m-%d %H:%M') if diag.created_at else 'N/A' }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-primary view-details-btn"
@@ -273,7 +249,7 @@
             <nav class="mt-4">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {{ 'disabled' if page == 1 }}">
-                        <a class="page-link" href="?page={{ page-1 }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.final_confidence_level %}&final_confidence_level={{ filters.final_confidence_level }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
+                        <a class="page-link" href="?page={{ page-1 }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -281,7 +257,7 @@
                     {% for p in range(1, total_pages + 1) %}
                         {% if p >= page - 2 and p <= page + 2 %}
                         <li class="page-item {{ 'active' if p == page }}">
-                            <a class="page-link" href="?page={{ p }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.final_confidence_level %}&final_confidence_level={{ filters.final_confidence_level }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
+                            <a class="page-link" href="?page={{ p }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
                                 {{ p }}
                             </a>
                         </li>
@@ -289,7 +265,7 @@
                     {% endfor %}
 
                     <li class="page-item {{ 'disabled' if page == total_pages }}">
-                        <a class="page-link" href="?page={{ page+1 }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.final_confidence_level %}&final_confidence_level={{ filters.final_confidence_level }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
+                        <a class="page-link" href="?page={{ page+1 }}{% if filters.expert_review_status %}&expert_review_status={{ filters.expert_review_status }}{% endif %}{% if filters.image_processed %}&image_processed={{ filters.image_processed }}{% endif %}{% if filters.crop %}&crop={{ filters.crop }}{% endif %}{% if filters.farmer %}&farmer={{ filters.farmer }}{% endif %}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
@@ -300,7 +276,7 @@
     </div>
 </div>
 
-<!-- Modals (unchanged) -->
+<!-- Modals -->
 <div class="modal fade" id="imageModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -324,24 +300,6 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="expertAnswersContent">
-                Loading...
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Expert Summary Modal -->
-<div class="modal fade" id="expertSummaryModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Expert Summary</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="expertSummaryContent">
                 Loading...
             </div>
             <div class="modal-footer">
@@ -436,72 +394,131 @@ function showExpertAnswers(answers) {
 
     content += '</div>';
     document.getElementById('expertAnswersContent').innerHTML = content;
-
     const modal = new bootstrap.Modal(document.getElementById('expertAnswersModal'));
     modal.show();
 }
 
-// Show expert summary
-function showExpertSummary(summary) {
-    let content = '<div class="p-3">';
-
-    try {
-        const summaryData = typeof summary === 'string' ? JSON.parse(summary) : summary;
-
-        if (summaryData) {
-            if (summaryData.notes) {
-                content += `<div class="alert alert-info">${summaryData.notes}</div>`;
-            } else if (typeof summaryData === 'object') {
-                content += '<pre style="white-space: pre-wrap;">' + JSON.stringify(summaryData, null, 2) + '</pre>';
-            } else {
-                content += `<p>${summaryData}</p>`;
-            }
-        } else {
-            content += '<p class="text-muted">No expert summary available</p>';
-        }
-    } catch (e) {
-        content += `<p>${summary}</p>`;
-    }
-
-    content += '</div>';
-    document.getElementById('expertSummaryContent').innerHTML = content;
-
-    const modal = new bootstrap.Modal(document.getElementById('expertSummaryModal'));
-    modal.show();
-}
-
-// View full details
+// View full details - ENHANCED DEBUGGING
 function viewDetails(id) {
+    // Show loading
+    document.getElementById('detailsContent').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading diagnosis details...</p>
+        </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+
+    console.log(`Fetching details for diagnosis ID: ${id}`);
+
     fetch(`/api/diagnosis/${id}`)
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            // Parse confidence to number if it exists
+            console.log('✅ API Data received:', data);
+            console.log('🔍 Image path from API:', data.image_path);
+
             const confidence = data.confidence ? parseFloat(data.confidence) : 0;
+
+            // Build image HTML with multiple fallback attempts
+            let imageHtml;
+            if (data.image_path) {
+                // Try multiple possible URL patterns
+                const possibleUrls = [
+                    `/static/uploads/${data.image_path}`,
+                    `/static/${data.image_path}`,
+                    `/uploads/${data.image_path}`,
+                    data.image_path // In case it's a full URL
+                ];
+
+                console.log('Trying possible URLs:', possibleUrls);
+
+                // Create image with fallback chain
+                imageHtml = `<div>
+                    <img id="modal-image-${id}"
+                         src="${possibleUrls[0]}"
+                         class="img-fluid rounded shadow"
+                         style="max-height: 250px; cursor: pointer; border: 2px solid #dee2e6;"
+                         onclick="showImageModal(this.src)"
+                         onerror="handleImageError(this, ${JSON.stringify(possibleUrls.slice(1))})"
+                         onload="console.log('✅ Image loaded successfully:', this.src);">
+
+                </div>`;
+
+                // Add error handler function if not exists
+                if (!window.handleImageError) {
+                    window.handleImageError = function(img, fallbackUrls) {
+                        console.log('❌ Image failed to load:', img.src);
+                        if (fallbackUrls && fallbackUrls.length > 0) {
+                            const nextUrl = fallbackUrls[0];
+                            const remainingUrls = fallbackUrls.slice(1);
+                            console.log('Trying fallback:', nextUrl);
+                            document.getElementById(`image-debug-${img.id.split('-')[2]}`).innerHTML =
+                                `<i class="fas fa-sync-alt me-1"></i>Trying fallback: ${nextUrl}`;
+                            img.src = nextUrl;
+                            img.onerror = function() {
+                                if (remainingUrls.length > 0) {
+                                    handleImageError(img, remainingUrls);
+                                } else {
+                                    console.log('❌ All URLs failed');
+                                    document.getElementById(`image-debug-${img.id.split('-')[2]}`).innerHTML =
+                                        `<i class="fas fa-exclamation-triangle text-danger me-1"></i>All URLs failed`;
+                                    img.src = 'https://via.placeholder.com/250x200?text=Image+Not+Available';
+                                    img.onerror = null;
+                                }
+                            };
+                        } else {
+                            img.src = 'https://via.placeholder.com/250x200?text=Image+Not+Available';
+                            img.onerror = null;
+                        }
+                    };
+                }
+            } else {
+                console.log('⚠️ No image_path in API data');
+                imageHtml = `<div>
+                    <img src="https://via.placeholder.com/250x200?text=No+Image+Available"
+                         class="img-fluid rounded shadow"
+                         style="max-height: 250px; border: 2px solid #dee2e6;">
+                    <div class="mt-2 small text-muted">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        No image path in database
+                    </div>
+                </div>`;
+            }
 
             let content = `
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="card mb-3">
+                        <div class="card mb-3 shadow-sm">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">Basic Information</h6>
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h6>
                             </div>
                             <div class="card-body">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-borderless">
                                     <tr>
-                                        <th>ID:</th>
-                                        <td>#${data.id}</td>
+                                        <th style="width: 120px;">ID:</th>
+                                        <td><span class="badge bg-secondary">#${data.id}</span></td>
                                     </tr>
                                     <tr>
                                         <th>Farmer:</th>
-                                        <td>${data.farmer_name || 'N/A'} (ID: ${data.user_id})</td>
+                                        <td><strong>${data.farmer_name || data.farmer_full_name || 'N/A'}</strong> <small class="text-muted">(ID: ${data.user_id})</small></td>
                                     </tr>
                                     <tr>
                                         <th>Crop:</th>
-                                        <td><span class="badge bg-info">${data.crop}</span></td>
+                                        <td><span class="badge bg-info">${data.crop || 'N/A'}</span></td>
                                     </tr>
                                     <tr>
-                                        <th>Disease Detected:</th>
-                                        <td>${data.disease_detected}</td>
+                                        <th>Disease:</th>
+                                        <td><span class="badge bg-warning text-dark">${data.disease_detected || 'N/A'}</span></td>
                                     </tr>
                                     <tr>
                                         <th>Confidence:</th>
@@ -514,213 +531,130 @@ function viewDetails(id) {
                                             </div>
                                         </td>
                                     </tr>
-
                                 </table>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-6">
-                        <div class="card mb-3">
+                        <div class="card mb-3 shadow-sm">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">Image</h6>
+                                <h6 class="mb-0"><i class="fas fa-image me-2"></i>Diagnosis Image</h6>
                             </div>
                             <div class="card-body text-center">
-                                <img src="/api/diagnosis/${data.id}/image"
-                                     class="img-fluid rounded"
-                                     style="max-height: 200px; cursor: pointer;"
-                                     onclick="showImageModal('/api/diagnosis/${data.id}/image')"
-                                     onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
+                                ${imageHtml}
+                                <div class="mt-2 text-start small">
+
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Symptoms</h6>
-                            </div>
+                        <div class="card mb-3 shadow-sm">
+                            <div class="card-header bg-light"><h6 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Symptoms</h6></div>
                             <div class="card-body">
-                                ${data.symptoms || 'No symptoms recorded'}
+                                <p style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 5px;">${data.symptoms || 'No symptoms recorded'}</p>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Recommendations</h6>
-                            </div>
+                        <div class="card mb-3 shadow-sm">
+                            <div class="card-header bg-light"><h6 class="mb-0"><i class="fas fa-list me-2"></i>Recommendations</h6></div>
                             <div class="card-body">
-                                ${data.recommendations || 'No recommendations'}
+                                <p style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 5px;">${data.recommendations || 'No recommendations'}</p>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <div class="row">
                     <div class="col-12">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Expert Review Information</h6>
-                            </div>
+                        <div class="card mb-3 shadow-sm">
+                            <div class="card-header bg-light"><h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Review Information</h6></div>
                             <div class="card-body">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th>Expert Review Status:</th>
-                                        <td>
-                                            ${data.expert_review_status == 'accurate' ? '<span class="badge bg-success">✅ Accurate</span>' :
-                                              data.expert_review_status == 'needs correction' ? '<span class="badge bg-warning">🔄 Needs Correction</span>' :
-                                              data.expert_review_status == 'reject' ? '<span class="badge bg-danger">❌ Rejected</span>' :
-                                              '<span class="badge bg-secondary">⏳ Pending</span>'}
-                                        </td>
-                                        <th>Image Processed:</th>
-                                        <td>
-                                            ${data.image_processed == 1 ?
-                                                '<span class="badge bg-success">Yes</span>' :
-                                                '<span class="badge bg-secondary">No</span>'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>For Training:</th>
-                                        <td>
-                                            ${data.for_training == 1 ?
-                                                '<span class="badge bg-success">Yes</span>' :
-                                                '<span class="badge bg-secondary">No</span>'}
-                                        </td>
-                                        <th>Training Used:</th>
-                                        <td>
-                                            ${data.training_used == 1 ?
-                                                '<span class="badge bg-success">Yes</span>' :
-                                                '<span class="badge bg-secondary">No</span>'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Created At:</th>
-                                        <td>${data.created_at || 'N/A'}</td>
-                                        <th></th>
-                                        <td></td>
-                                    </tr>
-                                </table>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-sm table-borderless">
+                                            <tr>
+                                                <th style="width: 150px;">Review Status:</th>
+                                                <td>${data.expert_review_status == 'accurate' ? '<span class="badge bg-success fs-6 p-2">✅ Accurate</span>' :
+                                                      data.expert_review_status == 'needs correction' ? '<span class="badge bg-warning text-dark fs-6 p-2">🔄 Needs Correction</span>' :
+                                                      data.expert_review_status == 'reject' ? '<span class="badge bg-danger fs-6 p-2">❌ Rejected</span>' :
+                                                      '<span class="badge bg-secondary fs-6 p-2">⏳ Pending</span>'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>For Training:</th>
+                                                <td>${data.for_training == 1 ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Created At:</th>
+                                                <td>${data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-sm table-borderless">
+                                            <tr>
+                                                <th style="width: 150px;">Training Used:</th>
+                                                <td>${data.training_used == 1 ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Add expert answers section if available
             if (data.expert_answers) {
                 try {
-                    const answers = typeof data.expert_answers === 'string' ?
-                        JSON.parse(data.expert_answers) : data.expert_answers;
-
+                    const answers = typeof data.expert_answers === 'string' ? JSON.parse(data.expert_answers) : data.expert_answers;
                     if (answers && answers.length > 0) {
-                        content += `
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <div class="card">
-                                        <div class="card-header bg-light">
-                                            <h6 class="mb-0">Expert Q&A</h6>
-                                        </div>
-                                        <div class="card-body">
-                        `;
-
+                        content += `<div class="row mt-3"><div class="col-12"><div class="card shadow-sm"><div class="card-header bg-light"><h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>Expert Q&A</h6></div><div class="card-body">`;
                         answers.forEach((qa, index) => {
-                            content += `
-                                <div class="mb-3 pb-2 border-bottom">
-                                    <p class="mb-1"><strong>Q${index + 1}:</strong> ${qa.question_text || qa.question || 'N/A'}</p>
-                                    <p class="mb-0"><strong>A:</strong>
-                                        <span class="badge ${qa.answer === 'yes' ? 'bg-success' : qa.answer === 'no' ? 'bg-danger' : 'bg-info'}">
-                                            ${qa.answer || 'N/A'}
-                                        </span>
-                                    </p>
-                                </div>
-                            `;
+                            let badgeClass = 'bg-secondary';
+                            let answerText = qa.answer || 'Not answered';
+
+                            if (qa.answer === 'yes') {
+                                badgeClass = 'bg-success';
+                                answerText = 'Yes';
+                            } else if (qa.answer === 'no') {
+                                badgeClass = 'bg-danger';
+                                answerText = 'No';
+                            }
+
+                            content += `<div class="mb-3 pb-2 border-bottom">
+                                <p class="mb-1"><strong>Q${index + 1}:</strong> ${qa.question_text || qa.question || 'N/A'}</p>
+                                <p class="mb-0"><strong>A:</strong> <span class="badge ${badgeClass} fs-6 p-2">${answerText}</span></p>
+                            </div>`;
                         });
-
-                        content += `</div></div></div>`;
+                        content += `</div></div></div></div>`;
                     }
-                } catch (e) {
-                    console.log('Error parsing expert answers:', e);
-                }
-            }
-
-            // Add expert summary section if available
-            if (data.expert_summary) {
-                try {
-                    const summary = typeof data.expert_summary === 'string' ?
-                        JSON.parse(data.expert_summary) : data.expert_summary;
-
-                    let summaryText = '';
-                    if (summary.notes) {
-                        summaryText = summary.notes;
-                    } else if (typeof summary === 'object') {
-                        summaryText = JSON.stringify(summary, null, 2);
-                    } else {
-                        summaryText = summary;
-                    }
-
-                    content += `
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">Expert Summary</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>${summaryText}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } catch (e) {
-                    if (data.expert_summary) {
-                        content += `
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <div class="card">
-                                        <div class="card-header bg-light">
-                                            <h6 class="mb-0">Expert Summary</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <p>${data.expert_summary}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
+                } catch (e) { console.log('Error parsing expert answers:', e); }
             }
 
             document.getElementById('detailsContent').innerHTML = content;
-            const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
-            modal.show();
         })
         .catch(error => {
-            console.error('Error loading details:', error);
-            alert('Error loading details: ' + error.message);
+            console.error('❌ Error loading details:', error);
+            document.getElementById('detailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error loading details:</strong> ${error.message}
+                </div>
+            `;
         });
 }
 
 // Delete diagnosis
 function deleteDiagnosis(id) {
     currentDiagnosisId = id;
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 
 document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
     if (currentDiagnosisId) {
-        fetch(`/api/diagnosis/${currentDiagnosisId}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': getCsrfToken()
-            }
-        })
+        fetch(`/api/diagnosis/${currentDiagnosisId}`, { method: 'DELETE' })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -731,9 +665,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
                 alert('Error deleting diagnosis: ' + data.error);
             }
         })
-        .catch(error => {
-            alert('Error: ' + error.message);
-        });
+        .catch(error => alert('Error: ' + error.message));
     }
 });
 
@@ -742,33 +674,24 @@ function exportTableToCSV() {
     const table = document.getElementById('diagnosisTable');
     const rows = table.querySelectorAll('tr');
     const csv = [];
-
-    // Get headers (skip image column)
     const headers = [];
     table.querySelectorAll('thead th').forEach((th, index) => {
-        if (index !== 1) { // Skip image column
-            headers.push(th.innerText.trim());
-        }
+        if (index !== 1) headers.push(th.innerText.trim());
     });
     csv.push(headers.join(','));
 
-    // Get data
     rows.forEach(row => {
         const rowData = [];
         const cells = row.querySelectorAll('td');
         cells.forEach((cell, index) => {
-            if (index !== 1) { // Skip image column
-                let text = cell.innerText.trim().replace(/,/g, ';');
-                text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            if (index !== 1) {
+                let text = cell.innerText.trim().replace(/,/g, ';').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
                 rowData.push(text);
             }
         });
-        if (rowData.length > 0) {
-            csv.push(rowData.join(','));
-        }
+        if (rowData.length > 0) csv.push(rowData.join(','));
     });
 
-    // Download
     const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -777,50 +700,21 @@ function exportTableToCSV() {
     a.click();
 }
 
-// Helper function for CSRF token
-function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-}
-
-// Initialize event listeners when document is ready
+// Initialize event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // View details buttons
     document.querySelectorAll('.view-details-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            viewDetails(this.dataset.id);
-        });
+        btn.addEventListener('click', function() { viewDetails(this.dataset.id); });
     });
-
-    // Delete buttons
     document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            deleteDiagnosis(this.dataset.id);
-        });
+        btn.addEventListener('click', function() { deleteDiagnosis(this.dataset.id); });
     });
-
-    // View answers buttons
     document.querySelectorAll('.view-answers-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            try {
-                const answers = JSON.parse(this.dataset.answers);
-                showExpertAnswers(answers);
-            } catch (e) {
-                showExpertAnswers(this.dataset.answers);
-            }
+            try { showExpertAnswers(JSON.parse(this.dataset.answers)); }
+            catch (e) { showExpertAnswers(this.dataset.answers); }
         });
     });
-
-    // View summary buttons
-    document.querySelectorAll('.view-summary-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            try {
-                const summary = JSON.parse(this.dataset.summary);
-                showExpertSummary(summary);
-            } catch (e) {
-                showExpertSummary(this.dataset.summary);
-            }
-        });
-    });
+    // REMOVED: The view-summary-btn event listener that was causing the error
 });
 </script>
 {% endblock %}

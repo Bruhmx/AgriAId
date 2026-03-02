@@ -117,7 +117,7 @@
                                 <div class="col-8">
                                     <h5 class="card-title mb-1">{{ diagnosis.crop|title }}</h5>
                                     <span class="badge bg-{{ 'success' if diagnosis.status == 'Mild' else 'warning' if diagnosis.status == 'Moderate' else 'danger' }}">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ diagnosis.status }} Severity
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ diagnosis.status }}
                                     </span>
                                 </div>
                                 <div class="col-4 text-end">

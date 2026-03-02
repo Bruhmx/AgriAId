@@ -14,35 +14,90 @@
                             <h2 class="mb-2"><i class="fas fa-book-medical me-2"></i>Disease Library Management</h2>
                             <p class="mb-0 opacity-8">Comprehensive information about crop diseases and their management</p>
                         </div>
-                        <div>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Filter Row - FIXED: Changed expert_disease_library to expert_diseases -->
+    <!-- Crop Selection Section (shown when no crop is selected) -->
+    {% if not crop %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-seedling fa-4x text-success mb-3"></i>
+                    <h3 class="mb-4">Select a Crop to View Diseases</h3>
+                    <div class="row justify-content-center">
+                        <div class="col-md-5 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center py-4">
+                                    <i class="fas fa-corn fa-4x text-success mb-3"></i>
+                                    <h4>Corn Diseases</h4>
+
+                                    <p class="text-muted">Available Diseases</p>
+                                    <a href="{{ url_for('expert_disease_library', crop='corn') }}"
+                                       class="btn btn-success btn-lg">
+                                        <i class="fas fa-book-open me-2"></i>Browse Corn Diseases
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center py-4">
+                                    <i class="fas fa-tree fa-4x text-success mb-3"></i>
+                                    <h4>Rice Diseases</h4>
+                                    <p class="text-muted">Available Diseases</p>
+                                    <a href="{{ url_for('expert_disease_library', crop='rice') }}"
+                                       class="btn btn-success btn-lg">
+                                        <i class="fas fa-book-open me-2"></i>Browse Rice Diseases
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Filter Bar (shown when crop is selected) -->
     <div class="row mb-4">
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title mb-3"><i class="fas fa-filter me-2"></i>Filter by Crop</h6>
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('expert_diseases') }}?crop=corn"
-                           class="btn btn-outline-success {{ 'active' if crop == 'corn' else '' }}">
-                            <i class="fas fa-corn me-2"></i>Corn
-                            {% if crop_stats and crop_stats.corn_count %}
-                            <span class="badge bg-success ms-2">{{ crop_stats.corn_count }}</span>
-                            {% endif %}
-                        </a>
-                        <a href="{{ url_for('expert_diseases') }}?crop=rice"
-                           class="btn btn-outline-success {{ 'active' if crop == 'rice' else '' }}">
-                            <i class="fas fa-rice me-2"></i>Rice
-                            {% if crop_stats and crop_stats.rice_count %}
-                            <span class="badge bg-success ms-2">{{ crop_stats.rice_count }}</span>
-                            {% endif %}
-                        </a>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0"><i class="fas fa-filter me-2"></i>Filter by Crop</h6>
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('expert_disease_library') }}"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Clear Selection
+                            </a>
+                            <a href="{{ url_for('expert_disease_library') }}?crop=corn"
+                               class="btn {{ 'btn-success' if crop == 'corn' else 'btn-outline-success' }}">
+                                <i class="fas fa-corn me-2"></i>Corn
+
+                            </a>
+                            <a href="{{ url_for('expert_disease_library') }}?crop=rice"
+                               class="btn {{ 'btn-success' if crop == 'rice' else 'btn-outline-success' }}">
+                                <i class="fas fa-tree me-2"></i>Rice
+
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-eye me-2 text-primary"></i>
+                            <strong>Currently Viewing:</strong>
+                        </div>
+                        <span class="badge bg-success fs-6 p-2">{{ crop_display }}</span>
                     </div>
                 </div>
             </div>
@@ -57,13 +112,17 @@
             <div class="card disease-card h-100 shadow-sm">
                 <div class="row g-0 h-100">
                     <div class="col-md-5 position-relative">
-                        <!-- UPDATED: Use the image serving route for BLOB images -->
-                        <img src="{% if disease.sample_image %}{{ disease.sample_image }}{% else %}{{ url_for('static', filename='img/disease-placeholder.jpg') }}{% endif %}"
+                        {% if disease.sample_image %}
+                        <img src="{{ disease.sample_image }}"
                              class="img-fluid rounded-start h-100"
-                             alt="{{ disease.disease_code|replace('_', ' ')|title }}"
-                             style="object-fit: cover; height: 100%; width: 100%; min-height: 200px;"
-                             onerror="this.src='{{ url_for('static', filename='img/disease-placeholder.jpg') }}'">
-                        {% if disease.sample_count %}
+                             alt="{{ disease.disease_code }}"
+                             style="object-fit: cover; height: 100%; width: 100%; min-height: 200px;">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center h-100" style="min-height: 200px;">
+                            <i class="fas fa-image fa-3x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        {% if disease.sample_count and disease.sample_count > 0 %}
                         <span class="badge bg-primary position-absolute top-0 start-0 m-2">
                             <i class="fas fa-images me-1"></i>{{ disease.sample_count }} samples
                         </span>
@@ -72,7 +131,6 @@
                     <div class="col-md-7">
                         <div class="card-body d-flex flex-column h-100">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <!-- REMOVED: disease_name doesn't exist, use disease_code as display name -->
                                 <h5 class="card-title mb-0">{{ disease.disease_code|replace('_', ' ')|title }}</h5>
                                 <span class="badge bg-info">{{ crop_display }}</span>
                             </div>
@@ -107,7 +165,7 @@
                                     </div>
                                     <small class="text-muted">
                                         <i class="fas fa-calendar-alt me-1"></i>
-                                        {{ disease.created_at|default('Recently added', true) }}
+                                        Added: {{ disease.created_at.strftime('%Y-%m-%d') if disease.created_at else 'Recently' }}
                                     </small>
                                 </div>
                             </div>
@@ -119,14 +177,14 @@
         {% endfor %}
     </div>
 
-    <!-- Pagination - FIXED: Changed expert_disease_library to expert_diseases -->
+    <!-- Pagination -->
     {% if pagination and pagination.pages > 1 %}
     <div class="row mt-4">
         <div class="col-12">
             <nav aria-label="Disease library pagination">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-                        <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=pagination.prev_num) }}">
+                        <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=pagination.prev_num) }}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -134,7 +192,7 @@
                     {% for page_num in pagination.iter_pages() %}
                         {% if page_num %}
                             <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                                <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=page_num) }}">
+                                <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=page_num) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -146,7 +204,7 @@
                     {% endfor %}
 
                     <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-                        <a class="page-link" href="{{ url_for('expert_diseases', crop=crop, page=pagination.next_num) }}">
+                        <a class="page-link" href="{{ url_for('expert_disease_library', crop=crop, page=pagination.next_num) }}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
@@ -163,27 +221,21 @@
                 <div class="card-body text-center py-5">
                     <div class="py-5">
                         <i class="fas fa-seedling fa-4x text-muted mb-3"></i>
-                        <h4>No disease information available</h4>
+                        <h4>No disease information available for {{ crop_display }}</h4>
                         <p class="text-muted mb-4">
-                            {% if crop %}
                             No diseases found for {{ crop_display }}. Add your first disease to get started.
-                            {% else %}
-                            Select a crop type to view or add disease information.
-                            {% endif %}
                         </p>
-                        {% if crop %}
                         <button class="btn btn-primary btn-lg" onclick="showAddDiseaseForm()">
                             <i class="fas fa-plus me-2"></i>Add First Disease
                         </button>
-                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
+    {% endif %}
 </div>
-
 <!-- Disease Info Modal with Edit Tabs -->
 <div class="modal fade" id="diseaseInfoModal" tabindex="-1" aria-labelledby="diseaseInfoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
@@ -489,6 +541,7 @@
                     <input type="hidden" id="diseaseId" name="diseaseId">
                     <input type="hidden" id="originalDiseaseCode" name="originalDiseaseCode">
                     <input type="hidden" id="originalCrop" name="originalCrop">
+                    <!-- REMOVED: sample_image hidden field - we'll use BLOB storage -->
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -619,6 +672,7 @@
         </div>
     </div>
 </div>
+</div>
 
 <script>
 // Global variables
@@ -630,7 +684,7 @@ let currentDiseaseCrop = null;
 let isEditMode = false;
 let currentDiseaseData = null;
 
-// ============ MISSING FUNCTIONS ============
+// ============ DISEASE INFORMATION FUNCTIONS ============
 
 /**
  * Refresh disease data in the info modal after changes
@@ -714,7 +768,46 @@ function updateDiseaseCard(diseaseCode, crop, data) {
     console.log('Disease card updated');
 }
 
-// Function to show disease information
+/**
+ * Update disease card image when new sample is added
+ */
+function updateDiseaseCardImage(diseaseCode, imageUrl) {
+    const cardElement = document.getElementById(`disease-${diseaseCode}`);
+    if (cardElement) {
+        const imgContainer = cardElement.querySelector('.col-md-5');
+        if (imgContainer) {
+            // Replace the icon with actual image
+            if (imgContainer.querySelector('i')) {
+                imgContainer.innerHTML = `<img src="${imageUrl}" class="img-fluid rounded-start h-100" alt="${diseaseCode}" style="object-fit: cover; height: 100%; width: 100%; min-height: 200px;">`;
+            } else {
+                const imgElement = imgContainer.querySelector('img');
+                if (imgElement) {
+                    imgElement.src = imageUrl;
+                }
+            }
+        }
+
+        // Update sample count
+        const badgeElement = cardElement.querySelector('.badge.bg-primary');
+        if (badgeElement) {
+            const currentCount = parseInt(badgeElement.textContent.match(/\d+/)) || 0;
+            badgeElement.innerHTML = `<i class="fas fa-images me-1"></i>${currentCount + 1} samples`;
+        } else {
+            // Add badge if it doesn't exist
+            const positionDiv = cardElement.querySelector('.position-relative');
+            if (positionDiv) {
+                const newBadge = document.createElement('span');
+                newBadge.className = 'badge bg-primary position-absolute top-0 start-0 m-2';
+                newBadge.innerHTML = '<i class="fas fa-images me-1"></i>1 sample';
+                positionDiv.appendChild(newBadge);
+            }
+        }
+    }
+}
+
+/**
+ * Show disease information in modal
+ */
 function showDiseaseInfo(crop, diseaseCode) {
     currentDiseaseCode = diseaseCode;
     currentDiseaseCrop = crop;
@@ -769,7 +862,9 @@ function showDiseaseInfo(crop, diseaseCode) {
     modal.show();
 }
 
-// Edit disease directly
+/**
+ * Edit disease directly
+ */
 function editDisease(diseaseCode, crop) {
     currentDiseaseCode = diseaseCode;
     currentDiseaseCrop = crop;
@@ -790,22 +885,61 @@ function editDisease(diseaseCode, crop) {
         });
 }
 
-// Display disease information in modal
+/**
+ * Display disease information in modal
+ */
 function displayDiseaseInfo(data) {
     // Create display name from disease code
     const displayName = data.disease_name || data.disease_code.replace(/_/g, ' ').replace(/\w\S*/g, function(txt){
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
 
+    // Build sample images gallery HTML
+    let samplesHtml = '';
+    if (data.sample_images && data.sample_images.length > 0) {
+        samplesHtml = `
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h6 class="border-bottom pb-2 mb-3">
+                        <i class="fas fa-images me-2"></i>Symptom Progression (${data.sample_images.length} images)
+                    </h6>
+                    <div class="row">
+        `;
+
+        data.sample_images.forEach((img, index) => {
+            samplesHtml += `
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card h-100">
+                        <img src="${img.url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'25\' y=\'55\' font-family=\'Arial\' font-size=\'12\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E'}"
+                             class="card-img-top"
+                             alt="Sample ${index + 1}"
+                             style="height: 100px; object-fit: cover;">
+                        <div class="card-body p-2 text-center">
+                            <p class="small mb-1">${img.title || `Sample ${index + 1}`}</p>
+                            <span class="badge bg-${getSeverityColor(img.severity)}">
+                                ${img.severity || 'Stage'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        samplesHtml += `
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     const content = `
         <div class="disease-info">
             <div class="row mb-4">
                 <div class="col-md-4 text-center">
-                    <img src="${data.image_url || '/static/img/disease-placeholder.jpg'}"
+                    <img src="${data.image_url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\' viewBox=\'0 0 200 200\'%3E%3Crect width=\'200\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50\' y=\'110\' font-family=\'Arial\' font-size=\'14\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E'}"
                          class="img-fluid rounded mb-3"
                          alt="${displayName}"
-                         style="max-height: 200px; width: 100%; object-fit: cover;"
-                         onerror="this.src='/static/img/disease-placeholder.jpg'">
+                         style="max-height: 200px; width: 100%; object-fit: cover;">
                     <h4 class="text-primary">${displayName}</h4>
                     <span class="badge bg-info">${data.crop_display}</span>
                 </div>
@@ -830,37 +964,7 @@ function displayDiseaseInfo(data) {
                 </div>
             </div>
 
-            <!-- Sample Images Gallery -->
-            ${data.sample_images && data.sample_images.length > 0 ? `
-                <div class="row">
-                    <div class="col-12">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="border-bottom pb-2 mb-3">
-                                <i class="fas fa-images me-2"></i>Symptom Progression (${data.sample_images.length} images)
-                            </h6>
-                        </div>
-                        <div class="row">
-                            ${data.sample_images.map((img, index) => `
-                                <div class="col-md-3 col-6 mb-3">
-                                    <div class="card h-100">
-                                        <img src="${img.url || '/static/img/disease-placeholder.jpg'}"
-                                             class="card-img-top"
-                                             alt="Sample ${index + 1}"
-                                             style="height: 100px; object-fit: cover;"
-                                             onerror="this.src='/static/img/disease-placeholder.jpg'">
-                                        <div class="card-body p-2 text-center">
-                                            <p class="small mb-1">${img.title || `Sample ${index + 1}`}</p>
-                                            <span class="badge bg-${getSeverityColor(img.severity)}">
-                                                ${img.severity || 'Stage'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
+            ${samplesHtml}
 
             <!-- Treatment Information -->
             <div class="row mt-4">
@@ -918,7 +1022,9 @@ function displayDiseaseInfo(data) {
     document.getElementById('diseaseInfoModalLabel').innerHTML = `<i class="fas fa-info-circle me-2"></i>${displayName} Information`;
 }
 
-// Helper function for severity colors
+/**
+ * Helper function for severity colors
+ */
 function getSeverityColor(severity) {
     const colors = {
         'Early': 'success',
@@ -929,7 +1035,9 @@ function getSeverityColor(severity) {
     return colors[severity] || 'secondary';
 }
 
-// Toggle edit mode
+/**
+ * Toggle edit mode in info modal
+ */
 function toggleEditMode() {
     isEditMode = !isEditMode;
     const editToggle = document.getElementById('editModeToggle');
@@ -947,7 +1055,9 @@ function toggleEditMode() {
     }
 }
 
-// Show edit interface
+/**
+ * Show edit interface modal
+ */
 function showEditInterface() {
     const modal = new bootstrap.Modal(document.getElementById('inlineEditModal'));
 
@@ -956,7 +1066,7 @@ function showEditInterface() {
     document.getElementById('editCrop').value = currentDiseaseCrop;
     document.getElementById('editDiseaseCodeDisplay').value = currentDiseaseCode;
     document.getElementById('editCropDisplay').value = currentDiseaseCrop === 'corn' ? 'Corn' : 'Rice';
-    document.getElementById('editMainImagePreview').src = currentDiseaseData.image_url || '/static/img/disease-placeholder.jpg';
+    document.getElementById('editMainImagePreview').src = currentDiseaseData.image_url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'150\' height=\'150\' viewBox=\'0 0 150 150\'%3E%3Crect width=\'150\' height=\'150\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'35\' y=\'85\' font-family=\'Arial\' font-size=\'14\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E';
     document.getElementById('editCause').value = currentDiseaseData.cause || '';
     document.getElementById('editSymptoms').value = currentDiseaseData.symptoms || '';
     document.getElementById('editOrganicTreatment').value = currentDiseaseData.organic_treatment || '';
@@ -970,7 +1080,9 @@ function showEditInterface() {
     modal.show();
 }
 
-// Display sample images in edit mode
+/**
+ * Display sample images in edit mode
+ */
 function displaySampleImagesForEdit(samples) {
     const container = document.getElementById('editSampleImagesContainer');
 
@@ -984,7 +1096,7 @@ function displaySampleImagesForEdit(samples) {
         return `
         <div class="col-md-4 col-6 mb-3" id="edit-sample-${sampleId}">
             <div class="card">
-                <img src="${sample.url || '/static/img/disease-placeholder.jpg'}"
+                <img src="${sample.url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Crect width=\'120\' height=\'120\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'30\' y=\'70\' font-family=\'Arial\' font-size=\'12\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E'}"
                      class="card-img-top"
                      alt="Sample ${index + 1}"
                      style="height: 120px; object-fit: cover;">
@@ -1000,7 +1112,7 @@ function displaySampleImagesForEdit(samples) {
                                         onclick="deleteSample(${sample.id})">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                                ` : ''}
+                            ` : ''}
                         </div>
                     </div>
                     <p class="small text-truncate mt-1 mb-0">${sample.title || `Sample ${index + 1}`}</p>
@@ -1010,7 +1122,9 @@ function displaySampleImagesForEdit(samples) {
     `}).join('');
 }
 
-// Upload main image
+/**
+ * Upload main image for disease
+ */
 function uploadMainImage() {
     document.getElementById('editMainImageFile').click();
 }
@@ -1025,10 +1139,12 @@ function previewAndUploadMainImage(input) {
     }
 }
 
-// Edit sample
+/**
+ * Edit sample image
+ */
 function editSample(sampleData) {
     document.getElementById('editSampleId').value = sampleData.id || '';
-    document.getElementById('editSamplePreview').src = sampleData.url || '/static/img/disease-placeholder.jpg';
+    document.getElementById('editSamplePreview').src = sampleData.url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'150\' height=\'150\' viewBox=\'0 0 150 150\'%3E%3Crect width=\'150\' height=\'150\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'35\' y=\'85\' font-family=\'Arial\' font-size=\'14\' fill=\'%23999\'%3ENo Image%3C/text%3E%3C/svg%3E';
     document.getElementById('editSampleTitle').value = sampleData.title || '';
     document.getElementById('editSampleDescription').value = sampleData.description || '';
     document.getElementById('editSampleSeverity').value = sampleData.severity || 'Moderate';
@@ -1037,7 +1153,9 @@ function editSample(sampleData) {
     modal.show();
 }
 
-// Delete sample
+/**
+ * Delete sample image
+ */
 function deleteSample(sampleId) {
     if (!sampleId || sampleId === 'undefined') {
         console.error("Invalid sample ID:", sampleId);
@@ -1067,7 +1185,9 @@ function deleteSample(sampleId) {
     }
 }
 
-// Show add sample modal in inline edit
+/**
+ * Show add sample modal in inline edit
+ */
 function showAddSampleModalInline() {
     document.getElementById('inlineSampleDiseaseCode').value = currentDiseaseCode;
     document.getElementById('inlineSampleCrop').value = currentDiseaseCrop;
@@ -1097,7 +1217,9 @@ function previewInlineSampleImage(input) {
     }
 }
 
-// Save all inline edits
+/**
+ * Save all inline edits
+ */
 function saveInlineEdits() {
     const diseaseCode = document.getElementById('editDiseaseCode').value;
     const crop = document.getElementById('editCrop').value;
@@ -1159,25 +1281,9 @@ function saveInlineEdits() {
     });
 }
 
-// Add this function to update disease card image
-function updateDiseaseCardImage(diseaseCode, imageUrl) {
-    const cardElement = document.getElementById(`disease-${diseaseCode}`);
-    if (cardElement) {
-        const imgElement = cardElement.querySelector('img');
-        if (imgElement) {
-            imgElement.src = imageUrl;
-        }
-
-        // Update sample count
-        const badgeElement = cardElement.querySelector('.badge.bg-primary');
-        if (badgeElement) {
-            const currentCount = parseInt(badgeElement.textContent.match(/\d+/)) || 0;
-            badgeElement.innerHTML = `<i class="fas fa-images me-1"></i>${currentCount + 1} samples`;
-        }
-    }
-}
-
-// Modify saveInlineSample to update card
+/**
+ * Save inline sample
+ */
 function saveInlineSample() {
     const diseaseCode = document.getElementById('inlineSampleDiseaseCode').value;
     const crop = document.getElementById('inlineSampleCrop').value;
@@ -1235,7 +1341,9 @@ function saveInlineSample() {
     });
 }
 
-// Preview edit sample image
+/**
+ * Preview edit sample image
+ */
 function previewEditSampleImage(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -1246,12 +1354,16 @@ function previewEditSampleImage(input) {
     }
 }
 
-// Upload new sample image for editing
+/**
+ * Upload new sample image for editing
+ */
 function uploadNewSampleImage() {
     document.getElementById('editSampleImageFile').click();
 }
 
-// Print disease information
+/**
+ * Print disease information
+ */
 function printDiseaseInfo() {
     const printContent = document.getElementById('diseaseInfoContent').innerHTML;
     const printWindow = window.open('', '_blank');
@@ -1284,7 +1396,11 @@ function printDiseaseInfo() {
     printWindow.document.close();
 }
 
-// Image preview functions for add disease form
+// ============ ADD/EDIT DISEASE FORM FUNCTIONS ============
+
+/**
+ * Image preview functions for add disease form
+ */
 function previewSelectedImage(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -1306,7 +1422,9 @@ function clearCurrentImage() {
     document.getElementById('currentImageContainer').style.display = 'none';
 }
 
-// CRUD Operations for adding new disease
+/**
+ * Show add disease form
+ */
 function showAddDiseaseForm() {
     document.getElementById('diseaseFormModalLabel').innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add New Disease';
     document.getElementById('diseaseForm').reset();
@@ -1321,6 +1439,9 @@ function showAddDiseaseForm() {
     modal.show();
 }
 
+/**
+ * Save disease (with or without image)
+ */
 function saveDisease() {
     const form = document.getElementById('diseaseForm');
     if (!form.checkValidity()) {
@@ -1421,7 +1542,9 @@ function submitDiseaseForm() {
     });
 }
 
-// Delete disease function
+/**
+ * Delete disease function
+ */
 function deleteDisease(diseaseCode, crop) {
     deleteDiseaseCode = diseaseCode;
     deleteCrop = crop;
@@ -1429,7 +1552,11 @@ function deleteDisease(diseaseCode, crop) {
     modal.show();
 }
 
-// Set up delete confirmation button
+// ============ EVENT LISTENERS ============
+
+/**
+ * Set up delete confirmation button
+ */
 document.addEventListener('DOMContentLoaded', function() {
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     if (confirmDeleteBtn) {
@@ -1443,7 +1570,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
                 this.disabled = true;
 
-                console.log(`Deleting: ${deleteDiseaseCode} from ${deleteCrop}`); // Debug log
+                console.log(`Deleting: ${deleteDiseaseCode} from ${deleteCrop}`);
 
                 fetch(`/api/disease/${deleteDiseaseCode}?crop=${deleteCrop}`, {
                     method: 'DELETE',
@@ -1453,7 +1580,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Try to get error message from response
                         return response.json().then(err => {
                             throw new Error(err.message || `HTTP error! status: ${response.status}`);
                         }).catch(() => {
@@ -1463,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Delete response:', data); // Debug log
+                    console.log('Delete response:', data);
 
                     if (data.success) {
                         // Close modal
@@ -1480,7 +1606,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Check if no diseases left
                         const diseasesContainer = document.getElementById('diseasesContainer');
                         if (diseasesContainer && diseasesContainer.children.length === 0) {
-                            window.location.reload(); // Reload to show empty state
+                            window.location.reload();
                         }
                     } else {
                         alert('Error deleting disease: ' + (data.message || 'Unknown error'));
@@ -1489,7 +1615,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
                     console.error('Error:', error);
 
-                    // Show more specific error message
                     if (error.message.includes('403')) {
                         alert('Access denied: You need admin privileges to delete diseases.');
                     } else if (error.message.includes('401')) {

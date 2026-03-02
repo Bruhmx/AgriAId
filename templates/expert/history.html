@@ -11,33 +11,38 @@
 </div>
 
 <!-- Filters and Search -->
+<!-- Filters and Search -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ url_for('expert_history') }}" class="row g-3">
+        <form method="GET" action="{{ url_for('expert_history') }}" class="row g-3" id="filterForm">
             <div class="col-md-3">
                 <label for="farmer" class="form-label">Farmer Name</label>
-                <input type="text" class="form-control" id="farmer" name="farmer" placeholder="Search by farmer" value="{{ request.args.get('farmer', '') }}">
+                <input type="text" class="form-control" id="farmer" name="farmer"
+                       placeholder="Search by farmer" value="{{ request.args.get('farmer', '') }}">
             </div>
             <div class="col-md-3">
                 <label for="disease" class="form-label">Disease</label>
-                <input type="text" class="form-control" id="disease" name="disease" placeholder="Filter by disease" value="{{ request.args.get('disease', '') }}">
+                <input type="text" class="form-control" id="disease" name="disease"
+                       placeholder="Filter by disease" value="{{ request.args.get('disease', '') }}">
             </div>
             <div class="col-md-2">
                 <label for="status" class="form-label">Review Status</label>
                 <select class="form-select" id="status" name="status">
-                    <option value="all {% if request.args.get('status') == 'all' %}selected{% endif %}">All Reviews</option>
+                    <option value="all {% if request.args.get('status') == 'all' or not request.args.get('status') %}selected{% endif %}">All Reviews</option>
                     <option value="approved {% if request.args.get('status') == 'approved' %}selected{% endif %}">Approved</option>
                     <option value="rejected {% if request.args.get('status') == 'rejected' %}selected{% endif %}">Rejected</option>
-                    <option value="pending{% if request.args.get('status') == 'pending' %}selected{% endif %}" >Pending</option>
+                    <option value="pending {% if request.args.get('status') == 'pending' %}selected{% endif %}">Pending</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <label for="date_from" class="form-label">From Date</label>
-                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ request.args.get('date_from', '') }}">
+                <input type="date" class="form-control" id="date_from" name="date_from"
+                       value="{{ request.args.get('date_from', '') }}">
             </div>
             <div class="col-md-2">
                 <label for="date_to" class="form-label">To Date</label>
-                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ request.args.get('date_to', '') }}">
+                <input type="date" class="form-control" id="date_to" name="date_to"
+                       value="{{ request.args.get('date_to', '') }}">
             </div>
             <div class="col-12">
                 <button type="submit" class="btn btn-primary">
@@ -91,6 +96,7 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
+                        <th>Image</th>
                         <th>Date</th>
                         <th>Farmer</th>
                         <th>Crop</th>
@@ -102,13 +108,28 @@
                 <tbody>
                     {% for review in reviews %}
                     <tr>
-                        <td>{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
-                            <strong>{{ review.farmer_full_name or review.farmer_name }}</strong><br>
+                            {% if review.image_path %}
+                            <img src="{{ url_for('static', filename='uploads/' + review.image_path) }}"
+                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer;"
+                                 onclick="showImageModal('{{ url_for('static', filename='uploads/' + review.image_path) }}')"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/50x50?text=No+Image';"
+                                 class="img-thumbnail"
+                                 alt="Diagnosis Image">
+                            {% else %}
+                            <img src="https://via.placeholder.com/50x50?text=No+Image"
+                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"
+                                 class="img-thumbnail"
+                                 alt="No Image">
+                            {% endif %}
                         </td>
-                        <td>{{ review.crop }}</td>
+                        <td>{{ review.created_at.strftime('%Y-%m-%d %H:%M') if review.created_at else 'N/A' }}</td>
                         <td>
-                            {{ review.disease_detected }}
+                            <strong>{{ review.farmer_full_name or review.farmer_name or 'Unknown' }}</strong><br>
+                        </td>
+                        <td>{{ review.crop or 'N/A' }}</td>
+                        <td>
+                            {{ review.disease_detected or 'N/A' }}
                             {% if review.alternative_diagnoses %}
                             <br>
                             <small class="text-muted">
@@ -196,10 +217,33 @@
         </div>
     </div>
 </div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Diagnosis Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="modalImage" class="img-fluid" alt="Diagnosis Image">
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Image modal function
+function showImageModal(imageSrc) {
+    document.getElementById('modalImage').src = imageSrc;
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+}
+
 // View summary function
 function viewSummary(reviewId, summaryData) {
     try {

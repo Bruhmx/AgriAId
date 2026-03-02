@@ -32,21 +32,28 @@
                     <tr id="diagnosis-{{ diag.id }}">
                         <td>#{{ diag.id }}</td>
                         <td>
-                            <img src="/api/diagnosis/{{ diag.id }}/image"
+                            {% if diag.image_path %}
+                            <img src="{{ url_for('static', filename='uploads/' + diag.image_path) }}"
                                  style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer;"
-                                 onclick="openImageModal('/api/diagnosis/{{ diag.id }}/image')"
-                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/50x50?text=No+Image';"
+                                 onclick="openImageModal('{{ url_for('static', filename='uploads/' + diag.image_path) }}')"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/50x50?text=No+Image'; console.log('Thumbnail error for: {{ diag.image_path }}')"
                                  alt="Thumbnail"
                                  class="img-thumbnail">
+                            {% else %}
+                            <img src="https://via.placeholder.com/50x50?text=No+Image"
+                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"
+                                 alt="No Image"
+                                 class="img-thumbnail">
+                            {% endif %}
                         </td>
                         <td>
-                            <strong>{{ diag.farmer_name }}</strong>
+                            <strong>{{ diag.farmer_name or diag.farmer_full_name or 'Unknown' }}</strong>
                         </td>
                         <td>
-                            <span class="badge bg-info">{{ diag.crop }}</span>
+                            <span class="badge bg-info">{{ diag.crop or 'N/A' }}</span>
                         </td>
-                        <td>{{ diag.disease_detected }}</td>
-                        <td>{{ diag.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ diag.disease_detected or 'N/A' }}</td>
+                        <td>{{ diag.created_at.strftime('%Y-%m-%d %H:%M') if diag.created_at else 'N/A' }}</td>
                         <td>
                             <button class="btn btn-sm btn-primary" onclick="reviewDiagnosis({{ diag.id }})">
                                 <i class="fas fa-check-circle me-1"></i>Review
@@ -55,7 +62,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
                             <h5 class="text-muted">No pending diagnoses</h5>
                             <p>All caught up!</p>
@@ -137,6 +144,7 @@
 let currentDiagnosisId = null;
 
 function openImageModal(imageSrc) {
+    console.log('Opening image modal with src:', imageSrc);
     document.getElementById('zoomImage').src = imageSrc;
     const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
     imageModal.show();
@@ -146,24 +154,37 @@ function reviewDiagnosis(id) {
     currentDiagnosisId = id;
     document.getElementById('reviewDiagnosisId').textContent = id;
 
+    // Get the working image URL from the table
+    const tableImage = document.querySelector(`#diagnosis-${id} img`);
+    const tableImageUrl = tableImage ? tableImage.src : null;
+
+    console.log('Using table image URL:', tableImageUrl);
+
     fetch(`/api/diagnosis/${id}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.error) {
                 alert('Error: ' + data.error);
                 return;
             }
 
+            // Use table image URL since API doesn't provide it
+            const imageHtml = tableImageUrl ?
+                `<img src="${tableImageUrl}"
+                      class="img-fluid rounded"
+                      style="max-height: 300px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                      onclick="openImageModal('${tableImageUrl}')"
+                      alt="Diagnosis Image">` :
+                `<img src="https://via.placeholder.com/400x300?text=No+Image"
+                      class="img-fluid rounded"
+                      style="max-height: 300px;"
+                      alt="No Image">`;
+
             const content = `
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <h6 class="text-muted">Farmer</h6>
-                        <p class="fw-bold">${data.farmer_name || 'N/A'}</p>
+                        <p class="fw-bold">${data.farmer_name || data.farmer_full_name || 'N/A'}</p>
                     </div>
                     <div class="col-md-6">
                         <h6 class="text-muted">Date</h6>
@@ -171,19 +192,10 @@ function reviewDiagnosis(id) {
                     </div>
                 </div>
 
-                <!-- Image Section -->
                 <div class="mb-4">
                     <h6 class="text-muted">Uploaded Image</h6>
                     <div class="text-center p-3 bg-light rounded">
-                        <img src="/api/diagnosis/${id}/image"
-                             class="img-fluid rounded"
-                             style="max-height: 300px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
-                             onclick="openImageModal('/api/diagnosis/${id}/image')"
-                             alt="Diagnosis Image"
-                             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Not+Available';">
-                        <p class="text-muted mt-2 small">
-                            <i class="fas fa-search-plus me-1"></i>Click image to enlarge
-                        </p>
+                        ${imageHtml}
                     </div>
                 </div>
 
@@ -196,7 +208,6 @@ function reviewDiagnosis(id) {
                         <h6 class="text-muted">Detected Disease</h6>
                         <p class="fw-bold">${data.disease_detected || 'N/A'}</p>
                     </div>
-
                 </div>
 
                 <div class="mb-4">
@@ -219,11 +230,10 @@ function reviewDiagnosis(id) {
                 <form id="reviewForm">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Review Status *</label>
-
                         <select class="form-select" id="reviewStatus" required>
                             <option value="">Select status</option>
                             <option value="accurate">✅ Accurate - AI was correct</option>
-                            <option value="needs correction">🔄 Needs Correction - AI was wrong</option>  <!-- This must be exact -->
+                            <option value="needs correction">🔄 Needs Correction - AI was wrong</option>
                             <option value="reject">❌ Reject - Invalid report</option>
                         </select>
                     </div>
@@ -238,44 +248,36 @@ function reviewDiagnosis(id) {
                             </option>
                             {% endfor %}
                         </select>
-                        <small class="text-muted">Required when marking as needs correction</small>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Expert Notes</label>
-                        <textarea class="form-control" id="expertNotes" rows="4" placeholder="Add your expert observations..."></textarea>
+                        <textarea class="form-control" id="expertNotes" rows="4"></textarea>
                     </div>
                 </form>
             `;
 
             document.getElementById('reviewModalBody').innerHTML = content;
 
-            // Show/hide disease selection based on status
             document.getElementById('reviewStatus').addEventListener('change', function() {
-                const correctField = document.getElementById('correctDiseaseField');
-                correctField.style.display = this.value === 'needs correction' ? 'block' : 'none';
+                document.getElementById('correctDiseaseField').style.display =
+                    this.value === 'needs correction' ? 'block' : 'none';
             });
 
-            const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
-            modal.show();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading diagnosis details: ' + error.message);
+            new bootstrap.Modal(document.getElementById('reviewModal')).show();
         });
 }
 
 // Submit review function
 function submitReview() {
     const status = document.getElementById('reviewStatus').value;
-    console.log('1. Selected status:', status);
 
     if (!status) {
         alert('Please select a review status');
         return;
     }
 
-    // If needs_correction, require disease selection
+    // If needs correction, require disease selection
     if (status === 'needs correction') {
         const diseaseSelect = document.getElementById('correctedDisease');
         if (!diseaseSelect.value) {
@@ -290,8 +292,6 @@ function submitReview() {
         action: status,
         expert_notes: expertNotes
     };
-
-    console.log('2. Sending data to server:', JSON.stringify(data, null, 2));
 
     // Add corrected disease if applicable
     if (status === 'needs correction') {
@@ -316,8 +316,6 @@ function submitReview() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('3. Server response:', data);
-
         if (data.success) {
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('reviewModal'));
@@ -342,7 +340,7 @@ function submitReview() {
         }
     })
     .catch(error => {
-        console.error('4. Error:', error);
+        console.error('Error:', error);
         alert('Error submitting review: ' + error.message);
     })
     .finally(() => {

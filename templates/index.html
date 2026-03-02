@@ -16,9 +16,10 @@
                     <p class="lead text-muted mb-4">Instant AI Disease Detection with Optional Expert Validation</p>
                 </div>
 
-                <!-- New Flow Visualization -->
+                <!-- New Flow Visualization - Updated for mobile -->
                 <div class="flow-visualization mb-5 p-4 bg-white bg-opacity-50 rounded-4">
-                    <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+                    <!-- Desktop View -->
+                    <div class="desktop-flow d-none d-md-flex justify-content-center align-items-center flex-wrap gap-3">
                         <div class="flow-step">
                             <div class="flow-icon bg-primary text-white">
                                 <i class="fas fa-camera"></i>
@@ -44,8 +45,7 @@
                             <span class="small fw-bold">Results + Alternatives</span>
                         </div>
                         <div class="flow-arrow optional-arrow">
-                            <i class="fas fa-arrow-down fa-2x text-secondary d-block d-md-none"></i>
-                            <i class="fas fa-arrow-right fa-2x text-secondary d-none d-md-block"></i>
+                            <i class="fas fa-arrow-right fa-2x text-secondary"></i>
                         </div>
                         <div class="flow-step optional-step">
                             <div class="flow-icon bg-info text-white">
@@ -53,6 +53,60 @@
                             </div>
                             <span class="small fw-bold">Optional Questions</span>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary mt-1">Refinement</span>
+                        </div>
+                    </div>
+
+                    <!-- Mobile View - Stacked with down arrows -->
+                    <div class="mobile-flow d-md-none">
+                        <div class="d-flex flex-column align-items-center">
+                            <!-- Step 1 -->
+                            <div class="flow-step mb-3">
+                                <div class="flow-icon bg-primary text-white">
+                                    <i class="fas fa-camera"></i>
+                                </div>
+                                <span class="small fw-bold">Upload/Capture</span>
+                            </div>
+                            <div class="flow-arrow mb-3">
+                                <i class="fas fa-arrow-down fa-2x text-primary"></i>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="flow-step mb-3">
+                                <div class="flow-icon bg-success text-white">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <span class="small fw-bold">AI Detection</span>
+                            </div>
+                            <div class="flow-arrow mb-3">
+                                <i class="fas fa-arrow-down fa-2x text-primary"></i>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="flow-step mb-3">
+                                <div class="flow-icon bg-warning text-white">
+                                    <i class="fas fa-chart-pie"></i>
+                                </div>
+                                <span class="small fw-bold">Results + Alternatives</span>
+                            </div>
+
+                            <!-- Optional Step with branching arrow -->
+                            <div class="position-relative w-100 mt-3">
+                                <div class="d-flex justify-content-center">
+                                    <div class="flow-arrow mb-3">
+                                        <i class="fas fa-arrow-down fa-2x text-secondary"></i>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-2">
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary mb-2">Optional</span>
+                                </div>
+                                <div class="flow-step optional-step">
+                                    <div class="flow-icon bg-info text-white">
+                                        <i class="fas fa-question-circle"></i>
+                                    </div>
+                                    <span class="small fw-bold">Optional Questions</span>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary mt-1">Refinement</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -117,13 +171,14 @@
             </div>
         </div>
 
-        <!-- How It Works - Updated Flow -->
+        <!-- How It Works - Updated Flow for mobile -->
         <div class="card mb-5">
             <div class="card-header">
                 <h4 class="mb-0"><i class="fas fa-cogs me-2"></i>Simple 3-Step Process</h4>
             </div>
             <div class="card-body p-4">
-                <div class="process-steps">
+                <!-- Desktop Process Steps -->
+                <div class="process-steps-desktop d-none d-md-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div class="step">
                         <div class="step-number">1</div>
                         <div class="step-content">
@@ -132,7 +187,7 @@
                         </div>
                     </div>
                     <div class="step-arrow">
-                        <i class="fas fa-arrow-right"></i>
+                        <i class="fas fa-arrow-right fa-2x"></i>
                     </div>
                     <div class="step">
                         <div class="step-number">2</div>
@@ -143,7 +198,7 @@
                         </div>
                     </div>
                     <div class="step-arrow">
-                        <i class="fas fa-arrow-right"></i>
+                        <i class="fas fa-arrow-right fa-2x"></i>
                     </div>
                     <div class="step">
                         <div class="step-number">3</div>
@@ -151,6 +206,46 @@
                             <h6>Review & Refine</h6>
                             <p class="small text-muted mb-0">View all possible diseases and optionally answer questions</p>
                             <span class="badge bg-info bg-opacity-10 text-info mt-1">Optional Refinement</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Process Steps - Vertical -->
+                <div class="process-steps-mobile d-md-none">
+                    <div class="d-flex flex-column align-items-center">
+                        <!-- Step 1 -->
+                        <div class="step text-center mb-4">
+                            <div class="step-number mx-auto">1</div>
+                            <div class="step-content mt-3">
+                                <h6>Upload Photo</h6>
+                                <p class="small text-muted mb-0">Capture or upload a clear image of affected leaves</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow mb-4">
+                            <i class="fas fa-arrow-down fa-2x"></i>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="step text-center mb-4">
+                            <div class="step-number mx-auto">2</div>
+                            <div class="step-content mt-3">
+                                <h6>AI Analysis</h6>
+                                <p class="small text-muted mb-0">Get instant disease detection from our AI model</p>
+                                <span class="badge bg-success bg-opacity-10 text-success mt-2">Primary Result</span>
+                            </div>
+                        </div>
+                        <div class="step-arrow mb-4">
+                            <i class="fas fa-arrow-down fa-2x"></i>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="step text-center">
+                            <div class="step-number mx-auto">3</div>
+                            <div class="step-content mt-3">
+                                <h6>Review & Refine</h6>
+                                <p class="small text-muted mb-0">View all possible diseases and optionally answer questions</p>
+                                <span class="badge bg-info bg-opacity-10 text-info mt-2">Optional Refinement</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -292,20 +387,6 @@
     transform: scale(1.1);
 }
 
-.process-steps {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.step {
-    flex: 1;
-    min-width: 150px;
-    text-align: center;
-}
-
 .step-number {
     width: 50px;
     height: 50px;
@@ -316,18 +397,12 @@
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    margin: 0 auto 1rem;
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .step-content h6 {
     color: var(--primary-green);
     font-weight: 600;
-}
-
-.step-arrow {
-    color: #4caf50;
-    font-size: 1.5rem;
 }
 
 /* New Flow Visualization Styles */
@@ -371,18 +446,30 @@
     justify-content: center;
 }
 
+/* Mobile-specific styles */
 @media (max-width: 768px) {
-    .process-steps {
-        flex-direction: column;
-        gap: 2rem;
+    .step {
+        width: 100%;
     }
 
-    .step-arrow {
-        transform: rotate(90deg);
+    .step-number {
+        margin-bottom: 1rem;
     }
 
-    .flow-visualization .d-flex {
-        flex-direction: column;
+    .flow-step {
+        width: 100%;
+    }
+
+    .mobile-flow .position-relative {
+        margin-top: 1rem !important;
+    }
+
+    .step-arrow i {
+        font-size: 1.5rem;
+    }
+
+    .flow-arrow i {
+        font-size: 1.5rem;
     }
 }
 </style>

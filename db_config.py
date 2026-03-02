@@ -1,6 +1,7 @@
 # db_config.py
-import mysql.connector
-from mysql.connector import pooling
+import psycopg2
+from psycopg2 import pool
+from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
 from contextlib import contextmanager
@@ -16,27 +17,42 @@ def init_db_pool():
     global connection_pool
 
     try:
-        # Create connection pool configuration - REDUCED POOL SIZE
-        db_config = {
-            "host": os.getenv("DB_HOST", "localhost"),
-            "user": os.getenv("DB_USER", "root"),
-            "password": os.getenv("DB_PASSWORD", ""),
-            "database": os.getenv("DB_NAME", "agriaid"),
-            "port": int(os.getenv("DB_PORT", 3306)),
-            "pool_name": "agriaid_pool",
-            "pool_size": 15,  # REDUCED FROM 30 TO 5
-            "pool_reset_session": True,
-            "autocommit": False,  # CHANGED TO False - better control
-            "use_pure": True,
-            "buffered": True,
-            "connection_timeout": 30,  # ADDED timeout
-        }
-
-        # Create connection pool
-        connection_pool = pooling.MySQLConnectionPool(**db_config)
-        print(f"✅ Database connection pool created successfully")
-        print(f"   Pool name: {db_config['pool_name']}")
-        print(f"   Pool size: {db_config['pool_size']}")
+        # Get the DATABASE_URL from environment (Render provides this automatically)
+        database_url = os.getenv("DATABASE_URL")
+        
+        if database_url:
+            # If DATABASE_URL exists (Render provides this), use it
+            # Note: Render's PostgreSQL DATABASE_URL might need modification
+            # Sometimes it starts with postgres:// but psycopg2 needs postgresql://
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
+            
+            # Create connection pool with DATABASE_URL
+            connection_pool = pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=15,  # Reduced pool size for PostgreSQL
+                dsn=database_url,
+                connect_timeout=30
+            )
+        else:
+            # Fallback to individual parameters if DATABASE_URL doesn't exist
+            db_config = {
+                "host": os.getenv("DB_HOST", "localhost"),
+                "user": os.getenv("DB_USER", "postgres"),
+                "password": os.getenv("DB_PASSWORD", ""),
+                "database": os.getenv("DB_NAME", "agriaid"),
+                "port": int(os.getenv("DB_PORT", 5432)),
+                "connect_timeout": 30,
+            }
+            
+            connection_pool = pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=15,
+                **db_config
+            )
+        
+        print(f"✅ PostgreSQL connection pool created successfully")
+        print(f"   Pool size: 15")
         return True
 
     except Exception as e:
@@ -62,26 +78,35 @@ def get_db():
             raise Exception("Database connection pool not initialized")
 
     try:
-        connection = connection_pool.get_connection()
-        # REMOVED the print statement - too noisy
+        connection = connection_pool.getconn()
         return connection
     except Exception as e:
         print(f"❌ Error getting database connection from pool: {e}")
         # Try to reinitialize and get connection again
         if init_db_pool():
-            return connection_pool.get_connection()
+            return connection_pool.getconn()
         raise
 
 
-# ========== NEW: CONTEXT MANAGER ==========
+def return_db(connection):
+    """Return a connection to the pool"""
+    global connection_pool
+    if connection_pool and connection:
+        try:
+            connection_pool.putconn(connection)
+        except Exception as e:
+            print(f"❌ Error returning connection to pool: {e}")
+
+
+# ========== CONTEXT MANAGERS ==========
 @contextmanager
 def get_db_cursor():
-    """Context manager for database connections - automatically closes"""
+    """Context manager for database connections - automatically returns connection to pool"""
     db = None
     cur = None
     try:
         db = get_db()
-        cur = db.cursor(dictionary=True)
+        cur = db.cursor(cursor_factory=RealDictCursor)
         yield cur
         db.commit()
     except Exception as e:
@@ -89,7 +114,7 @@ def get_db_cursor():
             db.rollback()
         raise e
     finally:
-        # ALWAYS close cursor and connection
+        # ALWAYS close cursor and return connection to pool
         if cur:
             try:
                 cur.close()
@@ -97,12 +122,11 @@ def get_db_cursor():
                 pass
         if db:
             try:
-                db.close()  # Returns connection to pool
+                return_db(db)
             except:
                 pass
 
 
-# ========== NEW: SIMPLE CURSOR (without commit) ==========
 @contextmanager
 def get_db_cursor_readonly():
     """Context manager for read-only operations"""
@@ -110,7 +134,7 @@ def get_db_cursor_readonly():
     cur = None
     try:
         db = get_db()
-        cur = db.cursor(dictionary_name=True)
+        cur = db.cursor(cursor_factory=RealDictCursor)
         yield cur
     finally:
         if cur:
@@ -120,7 +144,7 @@ def get_db_cursor_readonly():
                 pass
         if db:
             try:
-                db.close()
+                return_db(db)
             except:
                 pass
 
@@ -133,22 +157,18 @@ def get_pool_info():
         return {"status": "not_initialized", "pool": None}
 
     try:
-        # Get available attributes safely
+        # Get pool info
         info = {
             "status": "active",
-            "pool_name": getattr(connection_pool, 'pool_name', 'unknown'),
-            "pool_size": getattr(connection_pool, 'pool_size', 'unknown'),
+            "min_connections": getattr(connection_pool, '_minconn', 'unknown'),
+            "max_connections": getattr(connection_pool, '_maxconn', 'unknown'),
+            "closed": getattr(connection_pool, '_closed', 'unknown'),
         }
 
-        # Try to get pool stats if available
-        try:
-            # This might work in some versions
-            if hasattr(connection_pool, '_cnx_queue'):
-                info["connections_in_use"] = len(connection_pool._cnx_queue)
-            if hasattr(connection_pool, '_cnx_avail'):
-                info["connections_available"] = len(connection_pool._cnx_avail)
-        except:
-            pass
+        # Try to get connection counts
+        if hasattr(connection_pool, '_pool'):
+            info["connections_in_use"] = len(connection_pool._pool)
+            info["connections_available"] = connection_pool._maxconn - len(connection_pool._pool)
 
         return info
 

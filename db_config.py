@@ -1,6 +1,6 @@
 # db_config.py
-import psycopg2
-from psycopg2 import pool
+import mysql.connector
+from mysql.connector import pooling
 import os
 from dotenv import load_dotenv
 from contextlib import contextmanager
@@ -16,23 +16,27 @@ def init_db_pool():
     global connection_pool
 
     try:
-        # Get database URL from Render environment
-        database_url = os.getenv("DATABASE_URL")
-        
-        if not database_url:
-            # Fallback for local development
-            database_url = os.getenv("LOCAL_DATABASE_URL", 
-                "postgresql://postgres:password@localhost:5432/agriaid")
-        
+        # Create connection pool configuration - REDUCED POOL SIZE
+        db_config = {
+            "host": os.getenv("DB_HOST", "localhost"),
+            "user": os.getenv("DB_USER", "root"),
+            "password": os.getenv("DB_PASSWORD", ""),
+            "database": os.getenv("DB_NAME", "agriaid"),
+            "port": int(os.getenv("DB_PORT", 3306)),
+            "pool_name": "agriaid_pool",
+            "pool_size": 15,  # REDUCED FROM 30 TO 5
+            "pool_reset_session": True,
+            "autocommit": False,  # CHANGED TO False - better control
+            "use_pure": True,
+            "buffered": True,
+            "connection_timeout": 30,  # ADDED timeout
+        }
+
         # Create connection pool
-        connection_pool = psycopg2.pool.SimpleConnectionPool(
-            minconn=1,
-            maxconn=5,  # Small pool for free tier
-            dsn=database_url,
-            sslmode='require'  # Render requires SSL
-        )
-        
-        print(f"✅ PostgreSQL connection pool created successfully")
+        connection_pool = pooling.MySQLConnectionPool(**db_config)
+        print(f"✅ Database connection pool created successfully")
+        print(f"   Pool name: {db_config['pool_name']}")
+        print(f"   Pool size: {db_config['pool_size']}")
         return True
 
     except Exception as e:
@@ -52,28 +56,24 @@ def get_db():
     global connection_pool
 
     if connection_pool is None:
+        # Try to reinitialize pool
         print("⚠️ Connection pool not initialized, attempting to reinitialize...")
         if not init_db_pool():
             raise Exception("Database connection pool not initialized")
 
     try:
-        connection = connection_pool.getconn()
+        connection = connection_pool.get_connection()
+        # REMOVED the print statement - too noisy
         return connection
     except Exception as e:
         print(f"❌ Error getting database connection from pool: {e}")
         # Try to reinitialize and get connection again
         if init_db_pool():
-            return connection_pool.getconn()
+            return connection_pool.get_connection()
         raise
 
 
-def return_db(connection):
-    """Return connection to the pool"""
-    global connection_pool
-    if connection_pool and connection:
-        connection_pool.putconn(connection)
-
-
+# ========== NEW: CONTEXT MANAGER ==========
 @contextmanager
 def get_db_cursor():
     """Context manager for database connections - automatically closes"""
@@ -81,7 +81,7 @@ def get_db_cursor():
     cur = None
     try:
         db = get_db()
-        cur = db.cursor()
+        cur = db.cursor(dictionary=True)
         yield cur
         db.commit()
     except Exception as e:
@@ -89,6 +89,7 @@ def get_db_cursor():
             db.rollback()
         raise e
     finally:
+        # ALWAYS close cursor and connection
         if cur:
             try:
                 cur.close()
@@ -96,11 +97,12 @@ def get_db_cursor():
                 pass
         if db:
             try:
-                return_db(db)
+                db.close()  # Returns connection to pool
             except:
                 pass
 
 
+# ========== NEW: SIMPLE CURSOR (without commit) ==========
 @contextmanager
 def get_db_cursor_readonly():
     """Context manager for read-only operations"""
@@ -108,7 +110,7 @@ def get_db_cursor_readonly():
     cur = None
     try:
         db = get_db()
-        cur = db.cursor()
+        cur = db.cursor(dictionary_name=True)
         yield cur
     finally:
         if cur:
@@ -118,7 +120,7 @@ def get_db_cursor_readonly():
                 pass
         if db:
             try:
-                return_db(db)
+                db.close()
             except:
                 pass
 
@@ -128,13 +130,27 @@ def get_pool_info():
     global connection_pool
 
     if connection_pool is None:
-        return {"status": "not_initialized"}
+        return {"status": "not_initialized", "pool": None}
 
     try:
-        return {
+        # Get available attributes safely
+        info = {
             "status": "active",
-            "min_connections": getattr(connection_pool, 'minconn', 'unknown'),
-            "max_connections": getattr(connection_pool, 'maxconn', 'unknown'),
+            "pool_name": getattr(connection_pool, 'pool_name', 'unknown'),
+            "pool_size": getattr(connection_pool, 'pool_size', 'unknown'),
         }
+
+        # Try to get pool stats if available
+        try:
+            # This might work in some versions
+            if hasattr(connection_pool, '_cnx_queue'):
+                info["connections_in_use"] = len(connection_pool._cnx_queue)
+            if hasattr(connection_pool, '_cnx_avail'):
+                info["connections_available"] = len(connection_pool._cnx_avail)
+        except:
+            pass
+
+        return info
+
     except Exception as e:
         return {"status": "error", "error": str(e)}

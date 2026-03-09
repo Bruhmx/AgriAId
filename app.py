@@ -987,6 +987,33 @@ def get_diagnosis():
                                crop=session.get('crop_display', 'Unknown'))
 
 
+# ========== STATIC PAGES ==========
+
+@app.route("/terms")
+def terms_of_service():
+    """Terms of Service page"""
+    return render_template("terms.html")
+
+@app.route("/privacy")
+def privacy_policy():
+    """Privacy Policy page"""
+    return render_template("privacy.html")
+
+@app.route("/user-guide")
+def user_guide():
+    """User Guide page"""
+    return render_template("user_guide.html")
+
+@app.route("/faq")
+def faq():
+    """Frequently Asked Questions page"""
+    return render_template("faq.html")
+
+@app.route("/about")
+def about():
+    """System description page"""
+    return render_template("about.html")
+
 # Register user routes
 register_user_routes(app)
 
@@ -1103,11 +1130,6 @@ def stress_test():
         "total": len(results),
         "success_count": len([r for r in results if "OK" in r])
     })
-
-@app.route("/about")
-def about():
-    """System description page"""
-    return render_template("about.html")
 
 @app.route("/api/disease-info")
 def get_disease_info():

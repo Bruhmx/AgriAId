@@ -2565,7 +2565,10 @@ def register_user_routes(app):
                         di.manual_treatment,
                         di.created_at,
                         (SELECT COUNT(*) FROM disease_samples 
-                         WHERE disease_code = di.disease_code AND crop = di.crop) as sample_count
+                         WHERE disease_code = di.disease_code AND crop = di.crop) as sample_count,
+                        (SELECT id FROM disease_samples 
+                         WHERE disease_code = di.disease_code AND crop = di.crop 
+                         ORDER BY display_order LIMIT 1) as first_sample_id
                     FROM disease_info di
                     WHERE di.crop = %s
                     ORDER BY di.disease_code
@@ -3526,6 +3529,89 @@ def register_user_routes(app):
             traceback.print_exc()
             flash('Error loading expert dashboard', 'danger')
             return redirect(url_for('dashboard'))
+
+    # ========== EXPERT DISEASE LIBRARY ROUTE (FIXES THE 404 ERROR) ==========
+    @app.route("/expert/disease-library")
+    @login_required
+    @expert_required
+    def expert_disease_library():
+        """Expert disease library page"""
+        try:
+            crop = request.args.get('crop', 'corn')
+            page = request.args.get('page', 1, type=int)
+            per_page = 12
+            offset = (page - 1) * per_page
+
+            with get_db_cursor() as cur:
+                # Get diseases with pagination
+                cur.execute("""
+                    SELECT 
+                        di.id,
+                        di.disease_code,
+                        di.crop,
+                        di.cause,
+                        di.symptoms,
+                        di.organic_treatment,
+                        di.chemical_treatment,
+                        di.prevention,
+                        di.manual_treatment,
+                        di.created_at,
+                        (SELECT COUNT(*) FROM disease_samples 
+                         WHERE disease_code = di.disease_code AND crop = di.crop) as sample_count,
+                        (SELECT id FROM disease_samples 
+                         WHERE disease_code = di.disease_code AND crop = di.crop 
+                         ORDER BY display_order LIMIT 1) as first_sample_id
+                    FROM disease_info di
+                    WHERE di.crop = %s
+                    ORDER BY di.disease_code
+                    LIMIT %s OFFSET %s
+                """, (crop, per_page, offset))
+                
+                diseases = cur.fetchall()
+                
+                # Get total count for pagination
+                cur.execute("SELECT COUNT(*) as total FROM disease_info WHERE crop = %s", (crop,))
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
+                
+                # Create image URLs for each disease using the first sample
+                for disease in diseases:
+                    if disease['first_sample_id']:
+                        disease['sample_image'] = url_for('get_disease_sample_image', sample_id=disease['first_sample_id'])
+                    else:
+                        disease['sample_image'] = url_for('static', filename='img/disease-placeholder.jpg')
+            
+            crop_display = 'Corn' if crop == 'corn' else 'Rice'
+            
+            # Create pagination object
+            total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+            
+            # Simple pagination for template
+            pagination = {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': total_pages,
+                'has_prev': page > 1,
+                'has_next': page < total_pages,
+                'prev_num': page - 1 if page > 1 else None,
+                'next_num': page + 1 if page < total_pages else None,
+                'iter_pages': lambda: range(max(1, page - 2), min(total_pages, page + 2) + 1)
+            }
+            
+            return render_template("expert/diseases.html",
+                                   diseases=diseases,
+                                   crop=crop,
+                                   crop_display=crop_display,
+                                   pagination=pagination,
+                                   total=total)
+        
+        except Exception as e:
+            print(f"Expert disease library error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Error loading disease library', 'danger')
+            return redirect(url_for('expert_dashboard'))
 
     @app.route("/expert/pending-reviews")
     @login_required

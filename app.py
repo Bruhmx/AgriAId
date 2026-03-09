@@ -6,9 +6,10 @@ from flask import Flask, render_template, request, session, jsonify, flash, url_
 from werkzeug.utils import secure_filename, redirect, send_from_directory
 
 from auth import login_required
-from db_config import get_db, get_db_cursor, get_db_cursor_readonly
+from db_config import get_db
 from predictor import predict_crop, predict_disease, get_crop_display_name, get_disease_display_name
 from user_routes import register_user_routes
+
 
 import user_routes
 app = Flask(__name__)
@@ -32,64 +33,67 @@ def allowed_file(filename):
 def save_initial_diagnosis(user_id, image_file, crop, disease_data):
     """Save initial AI diagnosis to database with image path"""
     try:
-        with get_db_cursor() as cur:
-            # Generate unique filename
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            original_filename = secure_filename(image_file.filename)
+        db = get_db()
+        cursor = db.cursor()
 
-            if '.' in original_filename:
-                file_extension = original_filename.rsplit('.', 1)[1].lower()
-            else:
-                file_extension = 'jpg'
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        original_filename = secure_filename(image_file.filename)
 
-            # Create new filename
-            new_filename = f"user_{user_id}_{timestamp}_{original_filename}"
+        if '.' in original_filename:
+            file_extension = original_filename.rsplit('.', 1)[1].lower()
+        else:
+            file_extension = 'jpg'
 
-            # Full path to save the file
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
+        # Create new filename
+        new_filename = f"user_{user_id}_{timestamp}_{original_filename}"
 
-            # Save the file to disk
-            image_file.seek(0)
-            image_file.save(file_path)
-            print(f"✅ Image saved to disk: {file_path}")
+        # Full path to save the file
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
 
-            # IMPORTANT: Store the path in database - use the filename only
-            # Since UPLOAD_FOLDER is 'static/uploads', we store just the filename
-            db_image_path = new_filename  # This will be stored in the image_path column
+        # Save the file to disk
+        image_file.seek(0)
+        image_file.save(file_path)
+        print(f"✅ Image saved to disk: {file_path}")
 
-            # Combine treatment info into recommendations
-            recommendations = f"Manual: {disease_data.get('manual_treatment', 'N/A')}. "
-            recommendations += f"Organic: {disease_data.get('organic_treatment', 'N/A')}. "
-            recommendations += f"Chemical: {disease_data.get('chemical_treatment', 'N/A')}."
+        # IMPORTANT: Store the path in database - use the filename only
+        # Since UPLOAD_FOLDER is 'static/uploads', we store just the filename
+        db_image_path = new_filename  # This will be stored in the image_path column
 
-            # Insert with image PATH
-            query = """
-            INSERT INTO diagnosis_history 
-            (user_id, image_path, crop, disease_detected, 
-             confidence, symptoms, recommendations, for_training)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-            """
-            values = (
-                user_id,
-                db_image_path,  # Store the filename
-                crop,
-                disease_data['name'],
-                disease_data['confidence'],
-                disease_data.get('symptoms', ''),
-                recommendations,
-                True  # for_training
-            )
+        # Combine treatment info into recommendations
+        recommendations = f"Manual: {disease_data.get('manual_treatment', 'N/A')}. "
+        recommendations += f"Organic: {disease_data.get('organic_treatment', 'N/A')}. "
+        recommendations += f"Chemical: {disease_data.get('chemical_treatment', 'N/A')}."
 
-            cur.execute(query, values)
-            result = cur.fetchone()
-            diagnosis_id = result['id'] if result else None
+        # Insert with image PATH
+        query = """
+        INSERT INTO diagnosis_history 
+        (user_id, image_path, crop, disease_detected, 
+         confidence, symptoms, recommendations, for_training)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            user_id,
+            db_image_path,  # Store the filename
+            crop,
+            disease_data['name'],
+            disease_data['confidence'],
+            disease_data.get('symptoms', ''),
+            recommendations,
+            True  # for_training
+        )
 
-            file_size = os.path.getsize(file_path)
-            print(f"✅ Diagnosis saved with ID: {diagnosis_id}")
-            print(f"✅ Image path stored in DB: '{db_image_path}'")
-            print(f"✅ File saved at: {file_path} (Size: {file_size} bytes)")
-            return diagnosis_id
+        cursor.execute(query, values)
+        diagnosis_id = cursor.lastrowid
+        db.commit()
+        cursor.close()
+        db.close()
+
+        file_size = os.path.getsize(file_path)
+        print(f"✅ Diagnosis saved with ID: {diagnosis_id}")
+        print(f"✅ Image path stored in DB: '{db_image_path}'")
+        print(f"✅ File saved at: {file_path} (Size: {file_size} bytes)")
+        return diagnosis_id
 
     except Exception as e:
         print(f"❌ Error saving initial diagnosis: {e}")
@@ -100,47 +104,53 @@ def save_initial_diagnosis(user_id, image_file, crop, disease_data):
 def update_diagnosis_with_answers(diagnosis_id, answers_data, summary_data):
     """Update diagnosis with expert answers and summary"""
     try:
-        with get_db_cursor() as cur:
-            # Check if columns exist, if not add them (PostgreSQL syntax)
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'diagnosis_history' 
-                AND column_name = 'expert_answers'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE diagnosis_history ADD COLUMN expert_answers JSONB")
+        db = get_db()
+        cursor = db.cursor()
 
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'diagnosis_history' AND column_name = 'expert_summary'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE diagnosis_history ADD COLUMN expert_summary JSONB")
+        # Check if columns exist, if not add them
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM information_schema.columns 
+            WHERE table_name = 'diagnosis_history' 
+            AND column_name = 'expert_answers'
+        """)
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("ALTER TABLE diagnosis_history ADD COLUMN expert_answers JSON AFTER recommendations")
 
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'diagnosis_history' AND column_name = 'final_confidence_level'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE diagnosis_history ADD COLUMN final_confidence_level VARCHAR(50)")
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM information_schema.columns 
+            WHERE table_name = 'diagnosis_history' AND column_name = 'expert_summary'
+        """)
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("ALTER TABLE diagnosis_history ADD COLUMN expert_summary JSON AFTER expert_answers")
 
-            # Update with answers and summary
-            cur.execute("""
-                UPDATE diagnosis_history 
-                SET expert_answers = %s,
-                    expert_summary = %s,
-                    final_confidence_level = %s
-                WHERE id = %s
-            """, (
-                json.dumps(answers_data),
-                json.dumps(summary_data),
-                summary_data.get('confidence', 'Possible'),
-                diagnosis_id
-            ))
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM information_schema.columns 
+            WHERE table_name = 'diagnosis_history' AND column_name = 'final_confidence_level'
+        """)
+        if cursor.fetchone()[0] == 0:
+            cursor.execute(
+                "ALTER TABLE diagnosis_history ADD COLUMN final_confidence_level VARCHAR(50) AFTER expert_summary")
 
+        # Update with answers and summary
+        cursor.execute("""
+            UPDATE diagnosis_history 
+            SET expert_answers = %s,
+                expert_summary = %s,
+                final_confidence_level = %s
+            WHERE id = %s
+        """, (
+            json.dumps(answers_data),
+            json.dumps(summary_data),
+            summary_data.get('confidence', 'Possible'),
+            diagnosis_id
+        ))
+
+        db.commit()
+        cursor.close()
+        db.close()
         return True
     except Exception as e:
         print(f"❌ Error updating diagnosis: {e}")
@@ -153,15 +163,20 @@ def save_exported_training_data(diagnosis_ids):
         return
 
     try:
-        with get_db_cursor() as cur:
-            placeholders = ','.join(['%s'] * len(diagnosis_ids))
-            cur.execute(f"""
-                UPDATE diagnosis_history 
-                SET training_used = TRUE,
-                    image_processed = TRUE
-                WHERE id IN ({placeholders})
-            """, diagnosis_ids)
+        db = get_db()
+        cursor = db.cursor()
 
+        placeholders = ','.join(['%s'] * len(diagnosis_ids))
+        cursor.execute(f"""
+            UPDATE diagnosis_history 
+            SET training_used = TRUE,
+                image_processed = TRUE
+            WHERE id IN ({placeholders})
+        """, diagnosis_ids)
+
+        db.commit()
+        cursor.close()
+        db.close()
     except Exception as e:
         print(f"❌ Error marking training data: {e}")
 
@@ -175,50 +190,54 @@ def diagnosis_image(diagnosis_id):
     is_admin = session.get('is_admin', False)
 
     try:
-        with get_db_cursor() as cur:
-            # Admins can view any image, regular users only their own
-            if is_admin:
-                cur.execute("SELECT image_path FROM diagnosis_history WHERE id = %s", (diagnosis_id,))
-            else:
-                cur.execute("SELECT image_path FROM diagnosis_history WHERE id = %s AND user_id = %s",
-                            (diagnosis_id, user_id))
+        db = get_db()
+        cur = db.cursor()
 
-            result = cur.fetchone()
+        # Admins can view any image, regular users only their own
+        if is_admin:
+            cur.execute("SELECT image_path FROM diagnosis_history WHERE id = %s", (diagnosis_id,))
+        else:
+            cur.execute("SELECT image_path FROM diagnosis_history WHERE id = %s AND user_id = %s",
+                        (diagnosis_id, user_id))
 
-            if result and result['image_path']:
-                image_path = result['image_path']
-                print(f"Image path from DB: '{image_path}'")
+        result = cur.fetchone()
+        cur.close()
+        db.close()
 
-                # Get app directory
-                app_dir = os.path.dirname(os.path.abspath(__file__))
+        if result and result[0]:
+            image_path = result[0]
+            print(f"Image path from DB: '{image_path}'")
 
-                # Get just the filename (remove any path prefixes)
-                filename = os.path.basename(image_path)
+            # Get app directory
+            app_dir = os.path.dirname(os.path.abspath(__file__))
 
-                # Always look in static/uploads/ folder
-                full_path = os.path.join(app_dir, 'static', 'uploads', filename)
+            # Get just the filename (remove any path prefixes)
+            filename = os.path.basename(image_path)
 
-                print(f"Looking for image at: {full_path}")
+            # Always look in static/uploads/ folder
+            full_path = os.path.join(app_dir, 'static', 'uploads', filename)
 
-                if os.path.exists(full_path):
-                    print(f"✅ Found image at: {full_path}")
+            print(f"Looking for image at: {full_path}")
 
-                    # Determine mimetype
-                    ext = os.path.splitext(full_path)[1].lower()
-                    if ext == '.jpg' or ext == '.jpeg':
-                        mimetype = 'image/jpeg'
-                    elif ext == '.png':
-                        mimetype = 'image/png'
-                    elif ext == '.gif':
-                        mimetype = 'image/gif'
-                    elif ext == '.webp':
-                        mimetype = 'image/webp'
-                    else:
-                        mimetype = 'image/jpeg'
+            if os.path.exists(full_path):
+                print(f"✅ Found image at: {full_path}")
 
-                    return send_file(full_path, mimetype=mimetype)
+                # Determine mimetype
+                ext = os.path.splitext(full_path)[1].lower()
+                if ext == '.jpg' or ext == '.jpeg':
+                    mimetype = 'image/jpeg'
+                elif ext == '.png':
+                    mimetype = 'image/png'
+                elif ext == '.gif':
+                    mimetype = 'image/gif'
+                elif ext == '.webp':
+                    mimetype = 'image/webp'
                 else:
-                    print(f"❌ File does not exist at: {full_path}")
+                    mimetype = 'image/jpeg'
+
+                return send_file(full_path, mimetype=mimetype)
+            else:
+                print(f"❌ File does not exist at: {full_path}")
 
         print(f"❌ No image found for diagnosis {diagnosis_id}")
         return "Image not found", 404
@@ -322,50 +341,56 @@ def upload_image():
             session['crop_display'] = get_crop_display_name(crop)
 
             # Get disease details from database for all detected diseases
+            db = get_db()
+            cur = db.cursor(dictionary=True)
+
+            # Prepare results for all top diseases
             disease_results = []
-            with get_db_cursor() as cur:
-                for disease_name, confidence in diseases[:3]:
-                    # Get disease information
-                    cur.execute("""
-                        SELECT * FROM disease_info 
-                        WHERE crop = %s AND disease_code = %s
-                    """, (crop, disease_name))
+            for disease_name, confidence in diseases[:3]:
+                # Get disease information
+                cur.execute("""
+                    SELECT * FROM disease_info 
+                    WHERE crop = %s AND disease_code = %s
+                """, (crop, disease_name))
 
-                    disease_details = cur.fetchone()
+                disease_details = cur.fetchone()
 
-                    # Get sample images
-                    cur.execute("""
-                        SELECT id, image_title as title, 
-                               image_description as description, severity_level as severity
-                        FROM disease_samples 
-                        WHERE crop = %s AND disease_code = %s 
-                        ORDER BY display_order
-                    """, (crop, disease_name))
+                # Get sample images - FIXED: use id to generate URL
+                cur.execute("""
+                    SELECT id, image_title as title, 
+                           image_description as description, severity_level as severity
+                    FROM disease_samples 
+                    WHERE crop = %s AND disease_code = %s 
+                    ORDER BY display_order
+                """, (crop, disease_name))
 
-                    sample_images = cur.fetchall()
-                    # Generate URLs for each sample
-                    for sample in sample_images:
-                        sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
+                sample_images = cur.fetchall()
+                # Generate URLs for each sample
+                for sample in sample_images:
+                    sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
 
-                    disease_result = {
-                        'code': disease_name,
-                        'name': get_disease_display_name(disease_name),
-                        'confidence': float(confidence) * 100,
-                        'cause': disease_details.get('cause',
-                                                     'Information not available') if disease_details else 'Information not available',
-                        'symptoms': disease_details.get('symptoms',
-                                                        'Symptoms information not available') if disease_details else 'Symptoms information not available',
-                        'manual_treatment': disease_details.get('manual_treatment',
-                                                                'Remove affected leaves and maintain proper spacing.') if disease_details else 'Remove affected leaves and maintain proper spacing.',
-                        'organic_treatment': disease_details.get('organic_treatment',
-                                                                 'Apply neem oil or baking soda solution.') if disease_details else 'Apply neem oil or baking soda solution.',
-                        'chemical_treatment': disease_details.get('chemical_treatment',
-                                                                  'Consult with agricultural expert for chemical recommendations.') if disease_details else 'Consult with agricultural expert for chemical recommendations.',
-                        'prevention': disease_details.get('prevention',
-                                                          'Practice crop rotation and maintain field hygiene.') if disease_details else 'Practice crop rotation and maintain field hygiene.',
-                        'sample_images': sample_images
-                    }
-                    disease_results.append(disease_result)
+                disease_result = {
+                    'code': disease_name,
+                    'name': get_disease_display_name(disease_name),
+                    'confidence': float(confidence) * 100,
+                    'cause': disease_details.get('cause',
+                                                 'Information not available') if disease_details else 'Information not available',
+                    'symptoms': disease_details.get('symptoms',
+                                                    'Symptoms information not available') if disease_details else 'Symptoms information not available',
+                    'manual_treatment': disease_details.get('manual_treatment',
+                                                            'Remove affected leaves and maintain proper spacing.') if disease_details else 'Remove affected leaves and maintain proper spacing.',
+                    'organic_treatment': disease_details.get('organic_treatment',
+                                                             'Apply neem oil or baking soda solution.') if disease_details else 'Apply neem oil or baking soda solution.',
+                    'chemical_treatment': disease_details.get('chemical_treatment',
+                                                              'Consult with agricultural expert for chemical recommendations.') if disease_details else 'Consult with agricultural expert for chemical recommendations.',
+                    'prevention': disease_details.get('prevention',
+                                                      'Practice crop rotation and maintain field hygiene.') if disease_details else 'Practice crop rotation and maintain field hygiene.',
+                    'sample_images': sample_images
+                }
+                disease_results.append(disease_result)
+
+            cur.close()
+            db.close()
 
             # ===== SAVE TO DATABASE WITH IMAGE BLOB =====
             user_id = session.get('user_id')
@@ -425,21 +450,26 @@ def optional_questions(disease_code):
     crop = session.get('crop')
 
     # Get questions for this disease
-    with get_db_cursor() as cur:
-        cur.execute("""
-            SELECT q.id, q.question_text, q.yes_score, q.no_score, 
-                   q.question_category, q.priority, q.depends_on, q.show_if_answer,
-                   COALESCE(di.disease_name, q.target) as disease_name
-            FROM questions q
-            LEFT JOIN disease_info di ON q.crop = di.crop AND q.target = di.disease_code
-            WHERE q.crop = %s AND q.target = %s
-            ORDER BY q.priority, q.id
-        """, (crop, disease_code))
+    db = get_db()
+    cur = db.cursor(dictionary=True)
 
-        all_questions = cur.fetchall()
+    cur.execute("""
+        SELECT q.id, q.question_text, q.yes_score, q.no_score, 
+               q.question_category, q.priority, q.depends_on, q.show_if_answer,
+               COALESCE(di.disease_name, q.target) as disease_name
+        FROM questions q
+        LEFT JOIN disease_info di ON q.crop = di.crop AND q.target = di.disease_code
+        WHERE q.crop = %s AND q.target = %s
+        ORDER BY q.priority, q.id
+    """, (crop, disease_code))
+
+    all_questions = cur.fetchall()
 
     # Get root questions (no dependencies)
     root_questions = [q for q in all_questions if q['depends_on'] is None]
+
+    cur.close()
+    db.close()
 
     return render_template("optional_questions.html",
                            disease_code=disease_code,
@@ -462,16 +492,20 @@ def get_questions_for_disease():
         return jsonify({'success': False, 'error': 'Missing parameters'})
 
     try:
-        with get_db_cursor() as cur:
-            # Get all questions for this disease
-            cur.execute("""
-                SELECT id, question_text, question_category, display_order
-                FROM questions 
-                WHERE crop = %s AND disease_code = %s
-                ORDER BY display_order, id
-            """, (crop, disease_code))
+        db = get_db()
+        cur = db.cursor(dictionary=True)
 
-            questions = cur.fetchall()
+        # Get all questions for this disease
+        cur.execute("""
+            SELECT id, question_text, question_category, display_order
+            FROM questions 
+            WHERE crop = %s AND disease_code = %s
+            ORDER BY display_order, id
+        """, (crop, disease_code))
+
+        questions = cur.fetchall()
+        cur.close()
+        db.close()
 
         return jsonify({
             'success': True,
@@ -498,18 +532,22 @@ def get_question_insights():
             return jsonify({'success': False, 'error': 'Missing data'})
 
         # Get questions that were answered
-        with get_db_cursor() as cur:
-            placeholders = ','.join(['%s'] * len(answers.keys()))
-            query = f"""
-                SELECT id, question_text, question_category
-                FROM questions
-                WHERE crop = %s AND disease_code = %s AND id IN ({placeholders})
-            """
+        db = get_db()
+        cur = db.cursor(dictionary=True)
 
-            params = [crop, disease_code] + list(answers.keys())
-            cur.execute(query, params)
+        placeholders = ','.join(['%s'] * len(answers.keys()))
+        query = f"""
+            SELECT id, question_text, question_category
+            FROM questions
+            WHERE crop = %s AND disease_code = %s AND id IN ({placeholders})
+        """
 
-            questions = cur.fetchall()
+        params = [crop, disease_code] + list(answers.keys())
+        cur.execute(query, params)
+
+        questions = cur.fetchall()
+        cur.close()
+        db.close()
 
         # Calculate statistics
         total_yes = 0
@@ -603,17 +641,20 @@ def get_question_insights():
 @login_required
 def my_diagnoses():
     user_id = session['user_id']
-    
-    with get_db_cursor() as cur:
-        # Don't select BLOB, just the path
-        cur.execute("""
-            SELECT id, image_path, crop, disease_detected, confidence, created_at 
-            FROM diagnosis_history
-            WHERE user_id = %s 
-            ORDER BY created_at DESC
-        """, (user_id,))
+    db = get_db()
+    cur = db.cursor(dictionary=True)
 
-        diagnoses = cur.fetchall()
+    # Don't select BLOB, just the path
+    cur.execute("""
+        SELECT id, image_path, crop, disease_detected, confidence, created_at 
+        FROM diagnosis_history
+        WHERE user_id = %s 
+        ORDER BY created_at DESC
+    """, (user_id,))
+
+    diagnoses = cur.fetchall()
+    cur.close()
+    db.close()
 
     return render_template('history.html', diagnoses=diagnoses)
 
@@ -633,32 +674,36 @@ def export_training_data():
         limit = data.get('limit', 1000)
         min_confidence = data.get('min_confidence', 80)
 
-        with get_db_cursor() as cur:
-            # Now we select image_path instead of image BLOB
-            query = """
-                SELECT id, image_path, crop, disease_detected, confidence
-                FROM diagnosis_history 
-                WHERE for_training = TRUE 
-                AND training_used = FALSE
-                AND confidence >= %s
-            """
-            params = [min_confidence]
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
 
-            if crop:
-                query += " AND crop = %s"
-                params.append(crop)
+        # Now we select image_path instead of image BLOB
+        query = """
+            SELECT id, image_path, crop, disease_detected, confidence
+            FROM diagnosis_history 
+            WHERE for_training = TRUE 
+            AND training_used = FALSE
+            AND confidence >= %s
+        """
+        params = [min_confidence]
 
-            if disease:
-                query += " AND disease_detected = %s"
-                params.append(disease)
+        if crop:
+            query += " AND crop = %s"
+            params.append(crop)
 
-            query += " ORDER BY created_at DESC LIMIT %s"
-            params.append(limit)
+        if disease:
+            query += " AND disease_detected = %s"
+            params.append(disease)
 
-            cur.execute(query, params)
-            diagnoses = cur.fetchall()
+        query += " ORDER BY created_at DESC LIMIT %s"
+        params.append(limit)
+
+        cursor.execute(query, params)
+        diagnoses = cursor.fetchall()
 
         if not diagnoses:
+            cursor.close()
+            db.close()
             return jsonify({'success': True, 'message': 'No new images to export', 'exported_count': 0})
 
         # Create export directory
@@ -678,7 +723,7 @@ def export_training_data():
             # Get the image from file system
             if diagnosis['image_path']:
                 # Construct source path
-                source_path = os.path.join(os.path.dirname(__file__), 'static', 'uploads', diagnosis['image_path'])
+                source_path = os.path.join(os.path.dirname(__file__), 'static', diagnosis['image_path'])
 
                 if os.path.exists(source_path):
                     # Create destination filename
@@ -695,6 +740,9 @@ def export_training_data():
         # Mark as used
         if exported_ids:
             save_exported_training_data(exported_ids)
+
+        cursor.close()
+        db.close()
 
         return jsonify({
             'success': True,
@@ -715,47 +763,52 @@ def training_stats():
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     try:
-        with get_db_cursor() as cur:
-            # Total counts
-            cur.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN for_training = TRUE THEN 1 ELSE 0 END) as available_for_training,
-                    SUM(CASE WHEN training_used = TRUE THEN 1 ELSE 0 END) as used_in_training,
-                    SUM(CASE WHEN image_processed = TRUE THEN 1 ELSE 0 END) as processed,
-                    AVG(confidence) as avg_confidence
-                FROM diagnosis_history
-            """)
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
 
-            totals = cur.fetchone()
+        # Total counts
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN for_training = TRUE THEN 1 ELSE 0 END) as available_for_training,
+                SUM(CASE WHEN training_used = TRUE THEN 1 ELSE 0 END) as used_in_training,
+                SUM(CASE WHEN image_processed = TRUE THEN 1 ELSE 0 END) as processed,
+                AVG(confidence) as avg_confidence
+            FROM diagnosis_history
+        """)
 
-            # Breakdown by crop
-            cur.execute("""
-                SELECT 
-                    crop,
-                    COUNT(*) as total,
-                    SUM(CASE WHEN training_used = TRUE THEN 1 ELSE 0 END) as used
-                FROM diagnosis_history
-                WHERE for_training = TRUE
-                GROUP BY crop
-            """)
+        totals = cursor.fetchone()
 
-            by_crop = cur.fetchall()
+        # Breakdown by crop
+        cursor.execute("""
+            SELECT 
+                crop,
+                COUNT(*) as total,
+                SUM(CASE WHEN training_used = TRUE THEN 1 ELSE 0 END) as used
+            FROM diagnosis_history
+            WHERE for_training = TRUE
+            GROUP BY crop
+        """)
 
-            # Breakdown by disease
-            cur.execute("""
-                SELECT 
-                    disease_detected,
-                    COUNT(*) as total,
-                    AVG(confidence) as avg_confidence
-                FROM diagnosis_history
-                WHERE for_training = TRUE
-                GROUP BY disease_detected
-                ORDER BY total DESC
-                LIMIT 10
-            """)
+        by_crop = cursor.fetchall()
 
-            by_disease = cur.fetchall()
+        # Breakdown by disease
+        cursor.execute("""
+            SELECT 
+                disease_detected,
+                COUNT(*) as total,
+                AVG(confidence) as avg_confidence
+            FROM diagnosis_history
+            WHERE for_training = TRUE
+            GROUP BY disease_detected
+            ORDER BY total DESC
+            LIMIT 10
+        """)
+
+        by_disease = cursor.fetchall()
+
+        cursor.close()
+        db.close()
 
         return jsonify({
             'success': True,
@@ -915,30 +968,35 @@ def get_diagnosis():
         print(f"  Final Confidence: {final_confidence:.1f}% ({confidence_label})")
 
         # ========== GET DISEASE DETAILS FROM DATABASE ==========
-        with get_db_cursor() as cur:
-            # Get disease details
+        db = get_db()
+        cur = db.cursor(dictionary=True)
+
+        # Get disease details
+        cur.execute("""
+            SELECT * FROM disease_info 
+            WHERE crop = %s AND disease_code = %s
+        """, (crop, best_disease['code']))
+
+        disease_details = cur.fetchone()
+
+        # Get sample images for this disease
+        sample_images = []
+        if disease_details:
             cur.execute("""
-                SELECT * FROM disease_info 
-                WHERE crop = %s AND disease_code = %s
+                SELECT id, image_title as title, 
+                      image_description as description, severity_level as severity
+                FROM disease_samples 
+                WHERE crop = %s AND disease_code = %s 
+                ORDER BY display_order
             """, (crop, best_disease['code']))
 
-            disease_details = cur.fetchone()
+            sample_images = cur.fetchall()
+            # Generate URLs for each sample
+            for sample in sample_images:
+                sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
 
-            # Get sample images for this disease
-            sample_images = []
-            if disease_details:
-                cur.execute("""
-                    SELECT id, image_title as title, 
-                          image_description as description, severity_level as severity
-                    FROM disease_samples 
-                    WHERE crop = %s AND disease_code = %s 
-                    ORDER BY display_order
-                """, (crop, best_disease['code']))
-
-                sample_images = cur.fetchall()
-                # Generate URLs for each sample
-                for sample in sample_images:
-                    sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
+        cur.close()
+        db.close()
 
         # Get diagnosis_id from session for the image URL
         diagnosis_id = session.get('current_diagnosis_id', 0)
@@ -987,33 +1045,6 @@ def get_diagnosis():
                                crop=session.get('crop_display', 'Unknown'))
 
 
-# ========== STATIC PAGES ==========
-
-@app.route("/terms")
-def terms_of_service():
-    """Terms of Service page"""
-    return render_template("terms.html")
-
-@app.route("/privacy")
-def privacy_policy():
-    """Privacy Policy page"""
-    return render_template("privacy.html")
-
-@app.route("/user-guide")
-def user_guide():
-    """User Guide page"""
-    return render_template("user_guide.html")
-
-@app.route("/faq")
-def faq():
-    """Frequently Asked Questions page"""
-    return render_template("faq.html")
-
-@app.route("/about")
-def about():
-    """System description page"""
-    return render_template("about.html")
-
 # Register user routes
 register_user_routes(app)
 
@@ -1023,10 +1054,13 @@ register_user_routes(app)
 def test_db():
     """Test database connection"""
     try:
-        with get_db_cursor() as cur:
-            cur.execute("SELECT 1 as test")
-            result = cur.fetchone()
-        return jsonify({"success": True, "message": "Database connection working", "result": result})
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("SELECT 1 as test")
+        result = cur.fetchone()
+        cur.close()
+        db.close()
+        return jsonify({"success": True, "message": "Database connection working"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1106,10 +1140,14 @@ def stress_test():
 
     def test_connection(i):
         try:
-            with get_db_cursor() as cur:
-                cur.execute("SELECT 1 as test")  # Small delay
-                result = cur.fetchone()
-                results.append(f"Connection {i}: OK - {result}")
+            connection = get_db()
+            cursor = connection.cursor()
+            cursor.execute("SELECT SLEEP(0.1)")  # Small delay
+            cursor.execute("SELECT %s as test", (i,))
+            result = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            results.append(f"Connection {i}: OK")
         except Exception as e:
             results.append(f"Connection {i}: ERROR - {str(e)}")
 
@@ -1131,6 +1169,11 @@ def stress_test():
         "success_count": len([r for r in results if "OK" in r])
     })
 
+@app.route("/about")
+def about():
+    """System description page"""
+    return render_template("about.html")
+
 @app.route("/api/disease-info")
 def get_disease_info():
     """API endpoint to get detailed disease information"""
@@ -1141,32 +1184,36 @@ def get_disease_info():
         return jsonify({'success': False, 'error': 'Missing parameters'})
 
     try:
-        with get_db_cursor() as cur:
-            # Get disease information
-            cur.execute("""
-                SELECT * FROM disease_info 
-                WHERE crop = %s AND disease_code = %s
-            """, (crop, disease_code))
+        db = get_db()
+        cur = db.cursor(dictionary=True)
 
-            disease_data = cur.fetchone()
+        # Get disease information
+        cur.execute("""
+            SELECT * FROM disease_info 
+            WHERE crop = %s AND disease_code = %s
+        """, (crop, disease_code))
 
-            if not disease_data:
-                return jsonify({'success': False, 'error': 'Disease not found'})
+        disease_data = cur.fetchone()
 
-            # Get all sample images for this disease
-            cur.execute("""
-                SELECT id, image_title as title, 
-                       image_description as description, severity_level as severity
-                FROM disease_samples 
-                WHERE crop = %s AND disease_code = %s 
-                ORDER BY display_order
-            """, (crop, disease_code))
+        if not disease_data:
+            return jsonify({'success': False, 'error': 'Disease not found'})
 
-            sample_images = cur.fetchall()
+        # Get all sample images for this disease - FIXED: use id to generate URL
+        cur.execute("""
+            SELECT id, image_title as title, 
+                   image_description as description, severity_level as severity
+            FROM disease_samples 
+            WHERE crop = %s AND disease_code = %s 
+            ORDER BY display_order
+        """, (crop, disease_code))
 
-            # Generate URLs for each sample using your image serving route
-            for sample in sample_images:
-                sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
+        sample_images = cur.fetchall()
+
+        # Generate URLs for each sample using your image serving route
+        for sample in sample_images:
+            sample['url'] = url_for('get_disease_sample_image', sample_id=sample['id'])
+
+        cur.close()
 
         return jsonify({
             'success': True,
@@ -1189,44 +1236,55 @@ def get_disease_info():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
+    finally:
+        if cur:
+            cur.close()
+        if db:
+            db.close()
 
 @app.route('/disease-library')
+@login_required
 def disease_library():
     """Public disease library page"""
     try:
         crop = request.args.get('crop', 'corn')
 
-        with get_db_cursor() as cur:
-            cur.execute("""
-                SELECT 
-                    di.id,
-                    di.disease_code,
-                    di.crop,
-                    di.cause,
-                    di.symptoms,
-                    di.organic_treatment,
-                    di.chemical_treatment,
-                    di.prevention,
-                    di.manual_treatment,
-                    di.created_at,
-                    (SELECT COUNT(*) FROM disease_samples 
-                     WHERE disease_code = di.disease_code AND crop = di.crop) as sample_count,
-                    (SELECT id FROM disease_samples 
-                     WHERE disease_code = di.disease_code AND crop = di.crop 
-                     ORDER BY display_order LIMIT 1) as first_sample_id
-                FROM disease_info di
-                WHERE di.crop = %s
-                ORDER BY di.disease_code
-            """, (crop,))
+        db = get_db()
+        cur = db.cursor(dictionary=True)
 
-            diseases = cur.fetchall()
+        cur.execute("""
+            SELECT 
+                di.id,
+                di.disease_code,
+                di.crop,
+                di.cause,
+                di.symptoms,
+                di.organic_treatment,
+                di.chemical_treatment,
+                di.prevention,
+                di.manual_treatment,
+                di.created_at,
+                (SELECT COUNT(*) FROM disease_samples 
+                 WHERE disease_code = di.disease_code AND crop = di.crop) as sample_count,
+                (SELECT id FROM disease_samples 
+                 WHERE disease_code = di.disease_code AND crop = di.crop 
+                 ORDER BY display_order LIMIT 1) as first_sample_id
+            FROM disease_info di
+            WHERE di.crop = %s
+            ORDER BY di.disease_code
+        """, (crop,))
 
-            # Create image URLs for each disease using the first sample
-            for disease in diseases:
-                if disease['first_sample_id']:
-                    disease['sample_image'] = url_for('get_disease_sample_image', sample_id=disease['first_sample_id'])
-                else:
-                    disease['sample_image'] = url_for('static', filename='img/disease-placeholder.jpg')
+        diseases = cur.fetchall()
+
+        # Create image URLs for each disease using the first sample
+        for disease in diseases:
+            if disease['first_sample_id']:
+                disease['sample_image'] = url_for('get_disease_sample_image', sample_id=disease['first_sample_id'])
+            else:
+                disease['sample_image'] = url_for('static', filename='img/disease-placeholder.jpg')
+
+        cur.close()
+        db.close()
 
         crop_display = 'Corn' if crop == 'corn' else 'Rice'
 
@@ -1249,8 +1307,12 @@ def disease_library():
 def enable_2fa():
     """Enable two-factor authentication"""
     user_id = session.get('user_id')
-    with get_db_cursor() as cur:
-        cur.execute("UPDATE user_settings SET two_factor_enabled = 1 WHERE user_id = %s", (user_id,))
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("UPDATE user_settings SET two_factor_enabled = 1 WHERE user_id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
     return jsonify({'success': True})
 
 
@@ -1259,8 +1321,12 @@ def enable_2fa():
 def disable_2fa():
     """Disable two-factor authentication"""
     user_id = session.get('user_id')
-    with get_db_cursor() as cur:
-        cur.execute("UPDATE user_settings SET two_factor_enabled = 0 WHERE user_id = %s", (user_id,))
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("UPDATE user_settings SET two_factor_enabled = 0 WHERE user_id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
     return jsonify({'success': True})
 
 
@@ -1315,8 +1381,12 @@ def export_data():
 def clear_history():
     """Clear diagnosis history"""
     user_id = session.get('user_id')
-    with get_db_cursor() as cur:
-        cur.execute("DELETE FROM diagnosis_history WHERE user_id = %s", (user_id,))
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM diagnosis_history WHERE user_id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
     return jsonify({'success': True})
 
 
@@ -1327,9 +1397,10 @@ def delete_account():
     user_id = session.get('user_id')
 
     # Get profile image to delete
-    with get_db_cursor() as cur:
-        cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
-        user = cur.fetchone()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
 
     # Delete profile image if exists
     if user and user['profile_image']:
@@ -1341,8 +1412,10 @@ def delete_account():
                 pass
 
     # Delete user data (cascade should handle related records)
-    with get_db_cursor() as cur:
-        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
 
     # Clear session
     session.clear()
@@ -1355,15 +1428,20 @@ def delete_account():
 def reset_settings():
     """Reset all settings to default"""
     user_id = session.get('user_id')
-    
-    with get_db_cursor() as cur:
-        # Delete existing settings
-        cur.execute("DELETE FROM user_settings WHERE user_id = %s", (user_id,))
+    db = get_db()
+    cursor = db.cursor()
 
-        # Insert default settings
-        cur.execute("""
-            INSERT INTO user_settings (user_id) VALUES (%s)
-        """, (user_id,))
+    # Delete existing settings
+    cursor.execute("DELETE FROM user_settings WHERE user_id = %s", (user_id,))
+
+    # Insert default settings
+    cursor.execute("""
+        INSERT INTO user_settings (user_id) VALUES (%s)
+    """, (user_id,))
+
+    db.commit()
+    cursor.close()
+    db.close()
 
     return jsonify({'success': True})
 
@@ -1374,26 +1452,31 @@ def download_account_data():
     """Download all user data as JSON"""
     user_id = session.get('user_id')
 
-    with get_db_cursor() as cur:
-        # Get user data
-        cur.execute(
-            "SELECT id, username, email, full_name, phone_number, location, language, bio, created_at FROM users WHERE id = %s",
-            (user_id,))
-        user_data = cur.fetchone()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
 
-        # Get diagnosis history (without images to keep file size manageable)
-        cur.execute("""
-            SELECT id, crop, disease_detected, confidence, created_at, 
-                   expert_answers, expert_summary, final_confidence_level
-            FROM diagnosis_history 
-            WHERE user_id = %s 
-            ORDER BY created_at DESC
-        """, (user_id,))
-        diagnoses = cur.fetchall()
+    # Get user data
+    cursor.execute(
+        "SELECT id, username, email, full_name, phone_number, location, language, bio, created_at FROM users WHERE id = %s",
+        (user_id,))
+    user_data = cursor.fetchone()
 
-        # Get settings
-        cur.execute("SELECT * FROM user_settings WHERE user_id = %s", (user_id,))
-        settings = cur.fetchone()
+    # Get diagnosis history (without images to keep file size manageable)
+    cursor.execute("""
+        SELECT id, crop, disease_detected, confidence, created_at, 
+               expert_answers, expert_summary, final_confidence_level
+        FROM diagnosis_history 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC
+    """, (user_id,))
+    diagnoses = cursor.fetchall()
+
+    # Get settings
+    cursor.execute("SELECT * FROM user_settings WHERE user_id = %s", (user_id,))
+    settings = cursor.fetchone()
+
+    cursor.close()
+    db.close()
 
     # Combine all data
     export_data = {

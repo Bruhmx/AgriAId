@@ -74,7 +74,7 @@ def register_user_routes(app):
                     WHERE expert_review_status = 'pending' OR expert_review_status IS NULL
                 """)
                 result = cur.fetchone()
-                return result[0] if result else 0
+                return result['count'] if result else 0
         except Exception as e:
             print(f"Error getting pending count: {e}")
             return 0
@@ -92,7 +92,7 @@ def register_user_routes(app):
                         WHERE expert_review_status = 'pending' OR expert_review_status IS NULL
                     """)
                     result = cur.fetchone()
-                    pending_count = result[0] if result else 0
+                    pending_count = result['count'] if result else 0
                     return {'pending_count': pending_count}
             except Exception as e:
                 print(f"Error getting pending count: {e}")
@@ -157,7 +157,8 @@ def register_user_routes(app):
                         RETURNING id
                     """, (username, email, password_hash, full_name, user_type, phone, location))
 
-                    user_id = cur.fetchone()[0]
+                    result = cur.fetchone()
+                    user_id = result['id'] if result else None
 
                     # Create default settings
                     try:
@@ -238,16 +239,18 @@ def register_user_routes(app):
 
                     user_row = cur.fetchone()
 
+                # Since we're using RealDictCursor, user_row is a dictionary
                 if user_row:
+                    # Direct dictionary access - no need for indices
                     user = {
-                        'id': user_row[0],
-                        'username': user_row[1],
-                        'email': user_row[2],
-                        'password_hash': user_row[3],
-                        'user_type': user_row[4],
-                        'full_name': user_row[5],
-                        'is_active': user_row[6],
-                        'profile_image': user_row[7]
+                        'id': user_row['id'],
+                        'username': user_row['username'],
+                        'email': user_row['email'],
+                        'password_hash': user_row['password_hash'],
+                        'user_type': user_row['user_type'],
+                        'full_name': user_row['full_name'],
+                        'is_active': user_row['is_active'],
+                        'profile_image': user_row['profile_image']
                     }
                     print(f"✅ User found: {user['username']}, Type: {user['user_type']}, Active: {user['is_active']}")
                 else:
@@ -273,13 +276,10 @@ def register_user_routes(app):
 
                     # Update last login
                     try:
-                        db = get_db()
-                        cur = db.cursor()
-                        cur.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],))
-                        db.commit()
-                        return_db(db)
-                    except:
-                        pass
+                        with get_db_cursor() as cur:
+                            cur.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],))
+                    except Exception as e:
+                        print(f"⚠️ Could not update last_login: {e}")
 
                     flash(f'Welcome back, {user["username"]}!', 'success')
 
@@ -350,9 +350,9 @@ def register_user_routes(app):
                 
                 if stats_row:
                     stats = {
-                        'total_diagnoses': stats_row[0] or 0,
-                        'today_diagnoses': stats_row[1] or 0,
-                        'avg_confidence': round(stats_row[2] or 0, 1)
+                        'total_diagnoses': stats_row['total_diagnoses'] or 0,
+                        'today_diagnoses': stats_row['today_diagnoses'] or 0,
+                        'avg_confidence': round(stats_row['avg_confidence'] or 0, 1)
                     }
                 else:
                     stats = {'total_diagnoses': 0, 'today_diagnoses': 0, 'avg_confidence': 0}
@@ -366,7 +366,7 @@ def register_user_routes(app):
                         WHERE user_id = %s
                     """, (user_id,))
                     saved_result = cur.fetchone()
-                    saved_count = saved_result[0] if saved_result else 0
+                    saved_count = saved_result['saved_count'] if saved_result else 0
                 except:
                     print("Note: saved_diagnoses table doesn't exist")
 
@@ -383,11 +383,11 @@ def register_user_routes(app):
                 recent_diagnoses = []
                 for row in cur.fetchall():
                     recent_diagnoses.append({
-                        'id': row[0],
-                        'crop': row[1],
-                        'disease_detected': row[2],
-                        'confidence': row[3],
-                        'diagnosis_date': row[4]
+                        'id': row['id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'diagnosis_date': row['diagnosis_date']
                     })
 
                 # Get top diseases
@@ -403,8 +403,8 @@ def register_user_routes(app):
                 top_diseases = []
                 for row in cur.fetchall():
                     top_diseases.append({
-                        'disease_detected': row[0],
-                        'count': row[1]
+                        'disease_detected': row['disease_detected'],
+                        'count': row['count']
                     })
 
             return render_template("dashboard.html",
@@ -436,23 +436,23 @@ def register_user_routes(app):
                     flash('User not found', 'danger')
                     return redirect(url_for('dashboard'))
                 
-                # Convert to dictionary with column names (adjust indices as needed)
+                # Convert to dictionary with column names
                 user = {
-                    'id': user_row[0],
-                    'username': user_row[1],
-                    'email': user_row[2],
-                    'password_hash': user_row[3],
-                    'full_name': user_row[4],
-                    'user_type': user_row[5],
-                    'phone_number': user_row[6],
-                    'location': user_row[7],
-                    'profile_image': user_row[8],
-                    'bio': user_row[9],
-                    'is_active': user_row[10],
-                    'created_at': user_row[11],
-                    'last_login': user_row[12],
-                    'updated_at': user_row[13],
-                    'language': user_row[14] if len(user_row) > 14 else None
+                    'id': user_row['id'],
+                    'username': user_row['username'],
+                    'email': user_row['email'],
+                    'password_hash': user_row['password_hash'],
+                    'full_name': user_row['full_name'],
+                    'user_type': user_row['user_type'],
+                    'phone_number': user_row['phone_number'],
+                    'location': user_row['location'],
+                    'profile_image': user_row['profile_image'],
+                    'bio': user_row['bio'],
+                    'is_active': user_row['is_active'],
+                    'created_at': user_row['created_at'],
+                    'last_login': user_row['last_login'],
+                    'updated_at': user_row['updated_at'],
+                    'language': user_row.get('language') if 'language' in user_row else None
                 }
 
                 # Get stats - using PostgreSQL syntax
@@ -467,9 +467,9 @@ def register_user_routes(app):
                 stats_row = cur.fetchone()
                 
                 stats = {
-                    'total_diagnosis': stats_row[0] if stats_row else 0,
-                    'saved_items': stats_row[1] if stats_row else 0,
-                    'days_active': int(stats_row[2]) if stats_row and stats_row[2] else 0
+                    'total_diagnosis': stats_row['total_diagnosis'] if stats_row else 0,
+                    'saved_items': stats_row['saved_items'] if stats_row else 0,
+                    'days_active': int(stats_row['days_active']) if stats_row and stats_row['days_active'] else 0
                 }
 
                 # Get recent activity
@@ -499,11 +499,11 @@ def register_user_routes(app):
                 recent_activity = []
                 for row in cur.fetchall():
                     activity = {
-                        'type': row[0],
-                        'title': row[1],
-                        'description': row[2],
-                        'time': row[3].strftime('%Y-%m-%d %H:%M') if row[3] else None,
-                        'link': row[4]
+                        'type': row['type'],
+                        'title': row['title'],
+                        'description': row['description'],
+                        'time': row['time'].strftime('%Y-%m-%d %H:%M') if row['time'] else None,
+                        'link': row['link']
                     }
                     recent_activity.append(activity)
 
@@ -523,9 +523,9 @@ def register_user_routes(app):
                 crop_expertise = []
                 for row in cur.fetchall():
                     crop_expertise.append({
-                        'name': row[0],
-                        'diagnosis_count': row[1],
-                        'percentage': row[2]
+                        'name': row['name'],
+                        'diagnosis_count': row['diagnosis_count'],
+                        'percentage': row['percentage']
                     })
 
                 # Get common diseases
@@ -547,12 +547,12 @@ def register_user_routes(app):
                 common_diseases = []
                 for row in cur.fetchall():
                     common_diseases.append({
-                        'name': row[0],
-                        'crop': row[1],
-                        'count': row[2],
-                        'last_detected': row[3].strftime('%Y-%m-%d') if row[3] else None,
-                        'avg_confidence': row[4],
-                        'percentage': row[5]
+                        'name': row['name'],
+                        'crop': row['crop'],
+                        'count': row['count'],
+                        'last_detected': row['last_detected'].strftime('%Y-%m-%d') if row['last_detected'] else None,
+                        'avg_confidence': row['avg_confidence'],
+                        'percentage': row['percentage']
                     })
 
             # Calculate profile completion
@@ -648,7 +648,7 @@ def register_user_routes(app):
             with get_db_cursor() as cur:
                 cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
                 user_row = cur.fetchone()
-                old_image = user_row[0] if user_row else None
+                old_image = user_row['profile_image'] if user_row else None
 
             # Delete old image if exists
             if old_image:
@@ -713,7 +713,7 @@ def register_user_routes(app):
                 cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
                 user_row = cur.fetchone()
 
-                if not user_row or not check_password(current_password, user_row[0]):
+                if not user_row or not check_password(current_password, user_row['password_hash']):
                     return jsonify({'success': False, 'message': 'Current password is incorrect!'})
 
                 # Update password
@@ -801,18 +801,18 @@ def register_user_routes(app):
                 cur.execute(query, params)
                 for row in cur.fetchall():
                     diagnoses.append({
-                        'id': row[0],
-                        'crop': row[1],
-                        'disease_detected': row[2],
-                        'confidence': row[3],
-                        'symptoms': row[4],
-                        'recommendations': row[5],
-                        'created_at': row[6],
-                        'expert_answers': row[7],
-                        'expert_summary': row[8],
-                        'final_confidence_level': row[9],
-                        'username': row[10],
-                        'saved': row[11]
+                        'id': row['id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'symptoms': row['symptoms'],
+                        'recommendations': row['recommendations'],
+                        'created_at': row['created_at'],
+                        'expert_answers': row['expert_answers'],
+                        'expert_summary': row['expert_summary'],
+                        'final_confidence_level': row['final_confidence_level'],
+                        'username': row['username'],
+                        'saved': row['saved']
                     })
 
             # --- GET TOTAL COUNT FOR PAGINATION ---
@@ -848,13 +848,15 @@ def register_user_routes(app):
 
             with get_db_cursor() as cur:
                 cur.execute(count_query, count_params)
-                total = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
 
             # --- STATS (also filtered) ---
             with get_db_cursor() as cur:
                 # Total diagnoses
                 cur.execute(count_query, count_params)
-                total_diagnoses = cur.fetchone()[0]
+                total_row = cur.fetchone()
+                total_diagnoses = total_row['total'] if total_row else 0
 
                 # Monthly diagnoses - using PostgreSQL syntax
                 monthly_query = """
@@ -881,7 +883,8 @@ def register_user_routes(app):
                     monthly_params.extend(diseases)
 
                 cur.execute(monthly_query, monthly_params)
-                monthly_diagnoses = cur.fetchone()[0] or 0
+                monthly_row = cur.fetchone()
+                monthly_diagnoses = monthly_row['monthly_diagnoses'] if monthly_row else 0
 
                 # Average confidence
                 cur.execute("""
@@ -889,7 +892,8 @@ def register_user_routes(app):
                     FROM diagnosis_history dh
                     WHERE dh.user_id = %s
                 """, (user_id,))
-                avg_confidence = round(cur.fetchone()[0], 1)
+                avg_row = cur.fetchone()
+                avg_confidence = round(avg_row['avg_confidence'], 1) if avg_row else 0
 
                 # Saved count
                 cur.execute("""
@@ -897,7 +901,8 @@ def register_user_routes(app):
                     FROM saved_diagnoses
                     WHERE user_id = %s
                 """, (user_id,))
-                saved_count = cur.fetchone()[0] or 0
+                saved_row = cur.fetchone()
+                saved_count = saved_row['saved_count'] if saved_row else 0
 
                 # Get available crops for filter dropdown
                 cur.execute("""
@@ -906,7 +911,7 @@ def register_user_routes(app):
                     WHERE user_id = %s AND crop IS NOT NULL
                     ORDER BY crop
                 """, (user_id,))
-                available_crops = [row[0] for row in cur.fetchall()]
+                available_crops = [row['crop'] for row in cur.fetchall()]
 
                 # Get available diseases for filter dropdown
                 cur.execute("""
@@ -915,7 +920,7 @@ def register_user_routes(app):
                     WHERE user_id = %s AND disease_detected IS NOT NULL
                     ORDER BY disease_detected
                 """, (user_id,))
-                available_diseases = [row[0] for row in cur.fetchall()]
+                available_diseases = [row['disease_detected'] for row in cur.fetchall()]
 
             # --- PAGINATION OBJECT ---
             pagination = {
@@ -990,17 +995,17 @@ def register_user_routes(app):
 
                 # Convert to dict
                 diagnosis = {
-                    'id': diagnosis_row[0],
-                    'user_id': diagnosis_row[1],
-                    'crop': diagnosis_row[2],
-                    'disease_detected': diagnosis_row[3],
-                    'confidence': diagnosis_row[4],
-                    'symptoms': diagnosis_row[5],
-                    'recommendations': diagnosis_row[6],
-                    'created_at': diagnosis_row[7],
-                    'expert_answers': diagnosis_row[8],
-                    'expert_summary': diagnosis_row[9],
-                    'final_confidence_level': diagnosis_row[10] or 'AI Only'
+                    'id': diagnosis_row['id'],
+                    'user_id': diagnosis_row['user_id'],
+                    'crop': diagnosis_row['crop'],
+                    'disease_detected': diagnosis_row['disease_detected'],
+                    'confidence': diagnosis_row['confidence'],
+                    'symptoms': diagnosis_row['symptoms'],
+                    'recommendations': diagnosis_row['recommendations'],
+                    'created_at': diagnosis_row['created_at'],
+                    'expert_answers': diagnosis_row['expert_answers'],
+                    'expert_summary': diagnosis_row['expert_summary'],
+                    'final_confidence_level': diagnosis_row['final_confidence_level'] or 'AI Only'
                 }
 
             # Parse JSON fields if they exist
@@ -1094,16 +1099,16 @@ def register_user_routes(app):
                 saved_diagnoses = []
                 for row in cur.fetchall():
                     saved_diagnoses.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'crop': row[2],
-                        'disease': row[3],
-                        'confidence': row[4],
-                        'symptoms': row[5],
-                        'recommendations': row[6],
-                        'status': row[7],
-                        'created_at': row[8],
-                        'image': row[9]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'crop': row['crop'],
+                        'disease': row['disease'],
+                        'confidence': row['confidence'],
+                        'symptoms': row['symptoms'],
+                        'recommendations': row['recommendations'],
+                        'status': row['status'],
+                        'created_at': row['created_at'],
+                        'image': row['image']
                     })
 
             # --- CALCULATE STATS ---
@@ -1228,13 +1233,13 @@ def register_user_routes(app):
                     """, (
                         diagnosis_id,
                         user_id,
-                        diagnosis[0],  # crop
-                        diagnosis[1],  # disease_detected
-                        diagnosis[2],  # confidence
-                        diagnosis[3],  # symptoms
-                        diagnosis[4],  # recommendations
-                        diagnosis[6] or 'AI Only',  # final_confidence_level
-                        diagnosis[5]   # created_at
+                        diagnosis['crop'],
+                        diagnosis['disease_detected'],
+                        diagnosis['confidence'],
+                        diagnosis['symptoms'],
+                        diagnosis['recommendations'],
+                        diagnosis['final_confidence_level'] or 'AI Only',
+                        diagnosis['created_at']
                     ))
                     saved = True
                     message = "Diagnosis saved successfully"
@@ -1275,7 +1280,7 @@ def register_user_routes(app):
                     WHERE user_id = %s AND id IN ({placeholders})
                 """, [user_id] + ids)
 
-                saved = [row[0] for row in cur.fetchall()]
+                saved = [row['id'] for row in cur.fetchall()]
 
             return jsonify({'saved': saved})
 
@@ -1302,7 +1307,8 @@ def register_user_routes(app):
                             WHERE table_name = 'feedback'
                         )
                     """)
-                    table_exists = cur.fetchone()[0]
+                    table_exists_row = cur.fetchone()
+                    table_exists = table_exists_row['exists'] if table_exists_row else False
                     
                     if table_exists:
                         cur.execute("""
@@ -1317,17 +1323,17 @@ def register_user_routes(app):
                         
                         for row in cur.fetchall():
                             user_feedback.append({
-                                'id': row[0],
-                                'user_id': row[1],
-                                'name': row[2],
-                                'email': row[3],
-                                'feedback_type': row[4],
-                                'subject': row[5],
-                                'message': row[6],
-                                'image_path': row[7],
-                                'status': row[8],
-                                'admin_response': row[9],
-                                'created_at': row[10]
+                                'id': row['id'],
+                                'user_id': row['user_id'],
+                                'name': row['name'],
+                                'email': row['email'],
+                                'feedback_type': row['feedback_type'],
+                                'subject': row['subject'],
+                                'message': row['message'],
+                                'image_path': row['image_path'],
+                                'status': row['status'],
+                                'admin_response': row['admin_response'],
+                                'created_at': row['created_at']
                             })
 
         except Exception as e:
@@ -1355,17 +1361,17 @@ def register_user_routes(app):
                 
                 for row in cur.fetchall():
                     user_feedback.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'name': row[2],
-                        'email': row[3],
-                        'feedback_type': row[4],
-                        'subject': row[5],
-                        'message': row[6],
-                        'image_path': row[7],
-                        'status': row[8],
-                        'admin_response': row[9],
-                        'created_at': row[10]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'name': row['name'],
+                        'email': row['email'],
+                        'feedback_type': row['feedback_type'],
+                        'subject': row['subject'],
+                        'message': row['message'],
+                        'image_path': row['image_path'],
+                        'status': row['status'],
+                        'admin_response': row['admin_response'],
+                        'created_at': row['created_at']
                     })
 
         return render_template('feedback.html', user_feedback=user_feedback)
@@ -1465,7 +1471,8 @@ def register_user_routes(app):
                         WHERE table_name = 'feedback'
                     )
                 """)
-                exists = cur.fetchone()[0]
+                exists_row = cur.fetchone()
+                exists = exists_row['exists'] if exists_row else False
                 
                 if not exists:
                     return "❌ feedback table does not exist!"
@@ -1481,7 +1488,7 @@ def register_user_routes(app):
 
                 result = "<h3>Feedback Table Structure:</h3><ul>"
                 for col in columns:
-                    result += f"<li>{col[0]} - {col[1]} (Nullable: {col[2]})</li>"
+                    result += f"<li>{col['column_name']} - {col['data_type']} (Nullable: {col['is_nullable']})</li>"
                 result += "</ul>"
 
                 return result
@@ -1548,8 +1555,8 @@ def register_user_routes(app):
                 cur.execute("SELECT * FROM diagnosis_history WHERE id = %s", (diagnosis_id,))
                 diagnosis_row = cur.fetchone()
                 
-                # Convert to dict (simplified)
-                diagnosis = {'id': diagnosis_row[0]} if diagnosis_row else None
+                # Convert to dict
+                diagnosis = {'id': diagnosis_row['id']} if diagnosis_row else None
 
             return render_template("feedback_form.html", diagnosis=diagnosis)
 
@@ -1579,10 +1586,10 @@ def register_user_routes(app):
                 stats_row = cur.fetchone()
                 
                 stats = {
-                    'total_feedback': stats_row[0] or 0,
-                    'avg_rating': float(stats_row[1]) if stats_row[1] else 0,
-                    'avg_accuracy': float(stats_row[2]) if stats_row[2] else 0,
-                    'unique_users': stats_row[3] or 0
+                    'total_feedback': stats_row['total_feedback'] or 0,
+                    'avg_rating': float(stats_row['avg_rating']) if stats_row['avg_rating'] else 0,
+                    'avg_accuracy': float(stats_row['avg_accuracy']) if stats_row['avg_accuracy'] else 0,
+                    'unique_users': stats_row['unique_users'] or 0
                 }
 
                 # Recent feedback
@@ -1599,17 +1606,17 @@ def register_user_routes(app):
                 recent_feedback = []
                 for row in cur.fetchall():
                     recent_feedback.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'name': row[2],
-                        'email': row[3],
-                        'feedback_type': row[4],
-                        'subject': row[5],
-                        'message': row[6],
-                        'status': row[7],
-                        'created_at': row[8].isoformat() if row[8] else None,
-                        'admin_response': row[9],
-                        'username': row[10]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'name': row['name'],
+                        'email': row['email'],
+                        'feedback_type': row['feedback_type'],
+                        'subject': row['subject'],
+                        'message': row['message'],
+                        'status': row['status'],
+                        'created_at': row['created_at'].isoformat() if row['created_at'] else None,
+                        'admin_response': row['admin_response'],
+                        'username': row['username']
                     })
 
             return jsonify({
@@ -1645,14 +1652,14 @@ def register_user_routes(app):
                 stats_row = cur.fetchone()
                 
                 user_stats = {
-                    'total_users': stats_row[0] or 0,
-                    'active_users': stats_row[1] or 0,
-                    'inactive_users': stats_row[2] or 0,
-                    'total_farmers': stats_row[3] or 0,
-                    'total_experts': stats_row[4] or 0,
-                    'total_researchers': stats_row[5] or 0,
-                    'total_students': stats_row[6] or 0,
-                    'total_admins': stats_row[7] or 0
+                    'total_users': stats_row['total_users'] or 0,
+                    'active_users': stats_row['active_users'] or 0,
+                    'inactive_users': stats_row['inactive_users'] or 0,
+                    'total_farmers': stats_row['total_farmers'] or 0,
+                    'total_experts': stats_row['total_experts'] or 0,
+                    'total_researchers': stats_row['total_researchers'] or 0,
+                    'total_students': stats_row['total_students'] or 0,
+                    'total_admins': stats_row['total_admins'] or 0
                 }
 
                 # Active users today
@@ -1661,11 +1668,13 @@ def register_user_routes(app):
                     FROM diagnosis_history
                     WHERE DATE(created_at) = CURRENT_DATE
                 """)
-                active_today = cur.fetchone()[0] or 0
+                active_today_row = cur.fetchone()
+                active_today = active_today_row['active_today'] if active_today_row else 0
 
                 # ===== DIAGNOSIS STATISTICS =====
                 cur.execute("SELECT COUNT(*) as total FROM diagnosis_history")
-                total_diagnoses = cur.fetchone()[0] or 0
+                total_diagnoses_row = cur.fetchone()
+                total_diagnoses = total_diagnoses_row['total'] if total_diagnoses_row else 0
 
                 cur.execute("""
                     SELECT COUNT(*) as monthly
@@ -1673,14 +1682,16 @@ def register_user_routes(app):
                     WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
                     AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
                 """)
-                monthly_diagnoses = cur.fetchone()[0] or 0
+                monthly_row = cur.fetchone()
+                monthly_diagnoses = monthly_row['monthly'] if monthly_row else 0
 
                 # Average confidence
                 cur.execute("""
                     SELECT COALESCE(AVG(confidence), 0) as avg_confidence
                     FROM diagnosis_history
                 """)
-                avg_confidence = round(cur.fetchone()[0], 1)
+                avg_confidence_row = cur.fetchone()
+                avg_confidence = round(avg_confidence_row['avg_confidence'], 1) if avg_confidence_row else 0
 
                 # Top diseases detected
                 cur.execute("""
@@ -1698,9 +1709,9 @@ def register_user_routes(app):
                 top_diseases = []
                 for row in cur.fetchall():
                     top_diseases.append({
-                        'disease_detected': row[0],
-                        'count': row[1],
-                        'avg_confidence': float(row[2]) if row[2] else 0
+                        'disease_detected': row['disease_detected'],
+                        'count': row['count'],
+                        'avg_confidence': float(row['avg_confidence']) if row['avg_confidence'] else 0
                     })
 
                 # Diagnoses by crop
@@ -1717,13 +1728,14 @@ def register_user_routes(app):
                 diagnoses_by_crop = []
                 for row in cur.fetchall():
                     diagnoses_by_crop.append({
-                        'crop': row[0],
-                        'count': row[1]
+                        'crop': row['crop'],
+                        'count': row['count']
                     })
 
                 # ===== DISEASE INFO STATISTICS =====
                 cur.execute("SELECT COUNT(*) as total_diseases FROM disease_info")
-                total_diseases = cur.fetchone()[0] or 0
+                total_diseases_row = cur.fetchone()
+                total_diseases = total_diseases_row['total_diseases'] if total_diseases_row else 0
 
                 # Disease distribution by crop from disease_info
                 cur.execute("""
@@ -1738,8 +1750,8 @@ def register_user_routes(app):
                 disease_by_crop = []
                 for row in cur.fetchall():
                     disease_by_crop.append({
-                        'crop': row[0],
-                        'disease_count': row[1]
+                        'crop': row['crop'],
+                        'disease_count': row['disease_count']
                     })
 
                 # ===== FEEDBACK STATISTICS =====
@@ -1750,7 +1762,8 @@ def register_user_routes(app):
                         WHERE table_name = 'feedback'
                     )
                 """)
-                feedback_table_exists = cur.fetchone()[0]
+                table_exists_row = cur.fetchone()
+                feedback_table_exists = table_exists_row['exists'] if table_exists_row else False
 
                 feedback_stats = {'total_feedback': 0, 'pending_feedback': 0, 'resolved_feedback': 0}
                 
@@ -1765,9 +1778,9 @@ def register_user_routes(app):
                     fb_row = cur.fetchone()
                     if fb_row:
                         feedback_stats = {
-                            'total_feedback': fb_row[0] or 0,
-                            'pending_feedback': fb_row[1] or 0,
-                            'resolved_feedback': fb_row[2] or 0
+                            'total_feedback': fb_row['total_feedback'] or 0,
+                            'pending_feedback': fb_row['pending_feedback'] or 0,
+                            'resolved_feedback': fb_row['resolved_feedback'] or 0
                         }
 
                 # ===== RECENT ACTIVITIES =====
@@ -1786,10 +1799,10 @@ def register_user_routes(app):
                 recent_activities = []
                 for row in cur.fetchall():
                     recent_activities.append({
-                        'created_at': row[0],
-                        'username': row[1],
-                        'action': row[2],
-                        'user_id': row[3]
+                        'created_at': row['created_at'],
+                        'username': row['username'],
+                        'action': row['action'],
+                        'user_id': row['user_id']
                     })
 
                 # ===== ADD AVATAR COLORS =====
@@ -1803,7 +1816,8 @@ def register_user_routes(app):
 
                 # ===== SIDEBAR STATS =====
                 cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
-                pending_users = cur.fetchone()[0] or 0
+                pending_users_row = cur.fetchone()
+                pending_users = pending_users_row['count'] if pending_users_row else 0
 
                 sidebar_stats = {
                     'pending_users': pending_users,
@@ -1939,7 +1953,8 @@ def register_user_routes(app):
             # Get total count
             with get_db_cursor() as cur:
                 cur.execute(count_query, count_params)
-                total_users = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total_users = total_row['total'] if total_row else 0
                 total_pages = (total_users + per_page - 1) // per_page if total_users > 0 else 1
 
                 # Add pagination
@@ -1949,21 +1964,21 @@ def register_user_routes(app):
                 cur.execute(query, pagination_params)
                 for row in cur.fetchall():
                     users.append({
-                        'id': row[0],
-                        'username': row[1],
-                        'email': row[2],
-                        'password_hash': row[3],
-                        'full_name': row[4],
-                        'user_type': row[5],
-                        'phone_number': row[6],
-                        'location': row[7],
-                        'profile_image': row[8],
-                        'bio': row[9],
-                        'is_active': row[10],
-                        'created_at': row[11],
-                        'last_login': row[12],
-                        'updated_at': row[13],
-                        'language': row[14] if len(row) > 14 else None
+                        'id': row['id'],
+                        'username': row['username'],
+                        'email': row['email'],
+                        'password_hash': row['password_hash'],
+                        'full_name': row['full_name'],
+                        'user_type': row['user_type'],
+                        'phone_number': row['phone_number'],
+                        'location': row['location'],
+                        'profile_image': row['profile_image'],
+                        'bio': row['bio'],
+                        'is_active': row['is_active'],
+                        'created_at': row['created_at'],
+                        'last_login': row['last_login'],
+                        'updated_at': row['updated_at'],
+                        'language': row.get('language') if 'language' in row else None
                     })
 
             # Get statistics for cards - in a separate transaction
@@ -1984,15 +1999,15 @@ def register_user_routes(app):
                 stats_row = cur.fetchone()
                 if stats_row:
                     stats = {
-                        'total_users': stats_row[0] or 0,
-                        'farmers': stats_row[1] or 0,
-                        'experts': stats_row[2] or 0,
-                        'researchers': stats_row[3] or 0,
-                        'students': stats_row[4] or 0,
-                        'admins': stats_row[5] or 0,
-                        'active_today': stats_row[6] or 0,
-                        'active_users': stats_row[7] or 0,
-                        'inactive_users': stats_row[8] or 0
+                        'total_users': stats_row['total_users'] or 0,
+                        'farmers': stats_row['farmers'] or 0,
+                        'experts': stats_row['experts'] or 0,
+                        'researchers': stats_row['researchers'] or 0,
+                        'students': stats_row['students'] or 0,
+                        'admins': stats_row['admins'] or 0,
+                        'active_today': stats_row['active_today'] or 0,
+                        'active_users': stats_row['active_users'] or 0,
+                        'inactive_users': stats_row['inactive_users'] or 0
                     }
 
             # Get pending counts - in separate try/except blocks so one failure doesn't break everything
@@ -2000,7 +2015,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
                     result = cur.fetchone()
-                    pending_feedback = result[0] if result else 0
+                    pending_feedback = result['count'] if result else 0
             except Exception as e:
                 print(f"Error getting pending feedback count: {e}")
                 pending_feedback = 0
@@ -2009,7 +2024,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE status = 'pending'")
                     result = cur.fetchone()
-                    pending_diseases = result[0] if result else 0
+                    pending_diseases = result['count'] if result else 0
             except Exception:
                 pending_diseases = 0
 
@@ -2017,7 +2032,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
                     result = cur.fetchone()
-                    pending_reviews = result[0] if result else 0
+                    pending_reviews = result['count'] if result else 0
             except Exception as e:
                 print(f"Error getting pending reviews count: {e}")
                 pending_reviews = 0
@@ -2085,7 +2100,8 @@ def register_user_routes(app):
                     RETURNING id
                 """, (username, email, password_hash, full_name, user_type, phone, location))
 
-                user_id = cur.fetchone()[0]
+                result = cur.fetchone()
+                user_id = result['id'] if result else None
 
                 # Create default settings
                 try:
@@ -2145,7 +2161,7 @@ def register_user_routes(app):
                     return jsonify({'success': False, 'error': 'User not found'}), 404
 
                 # Toggle status
-                new_status = not user_row[1]
+                new_status = not user_row['is_active']
                 cur.execute("UPDATE users SET is_active = %s, updated_at = NOW() WHERE id = %s",
                             (new_status, user_id))
 
@@ -2202,17 +2218,17 @@ def register_user_routes(app):
                     return jsonify({'error': 'User not found'}), 404
 
                 user = {
-                    'id': user_row[0],
-                    'username': user_row[1],
-                    'email': user_row[2],
-                    'full_name': user_row[3],
-                    'user_type': user_row[4],
-                    'phone': user_row[5],
-                    'location': user_row[6],
-                    'profile_image': user_row[7],
-                    'is_active': user_row[8],
-                    'created_at': user_row[9].strftime('%Y-%m-%d %H:%M:%S') if user_row[9] else None,
-                    'last_login': user_row[10].strftime('%Y-%m-%d %H:%M:%S') if user_row[10] else None
+                    'id': user_row['id'],
+                    'username': user_row['username'],
+                    'email': user_row['email'],
+                    'full_name': user_row['full_name'],
+                    'user_type': user_row['user_type'],
+                    'phone': user_row['phone_number'],
+                    'location': user_row['location'],
+                    'profile_image': user_row['profile_image'],
+                    'is_active': user_row['is_active'],
+                    'created_at': user_row['created_at'].strftime('%Y-%m-%d %H:%M:%S') if user_row['created_at'] else None,
+                    'last_login': user_row['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user_row['last_login'] else None
                 }
 
             return jsonify(user)
@@ -2238,16 +2254,16 @@ def register_user_routes(app):
                 users = []
                 for row in cur.fetchall():
                     users.append({
-                        'id': row[0],
-                        'username': row[1],
-                        'email': row[2],
-                        'full_name': row[3],
-                        'user_type': row[4],
-                        'phone_number': row[5],
-                        'location': row[6],
-                        'is_active': row[7],
-                        'created_at': row[8],
-                        'last_login': row[9]
+                        'id': row['id'],
+                        'username': row['username'],
+                        'email': row['email'],
+                        'full_name': row['full_name'],
+                        'user_type': row['user_type'],
+                        'phone_number': row['phone_number'],
+                        'location': row['location'],
+                        'is_active': row['is_active'],
+                        'created_at': row['created_at'],
+                        'last_login': row['last_login']
                     })
 
             # Create CSV
@@ -2341,27 +2357,27 @@ def register_user_routes(app):
                 cur.execute(query, params)
                 for row in cur.fetchall():
                     feedback_list.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'name': row[2],
-                        'email': row[3],
-                        'feedback_type': row[4],
-                        'subject': row[5],
-                        'message': row[6],
-                        'image_path': row[7],
-                        'status': row[8],
-                        'admin_response': row[9],
-                        'created_at': row[10],
-                        'username': row[11],
-                        'full_name': row[12],
-                        'user_type': row[13]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'name': row['name'],
+                        'email': row['email'],
+                        'feedback_type': row['feedback_type'],
+                        'subject': row['subject'],
+                        'message': row['message'],
+                        'image_path': row['image_path'],
+                        'status': row['status'],
+                        'admin_response': row['admin_response'],
+                        'created_at': row['created_at'],
+                        'username': row['username'],
+                        'full_name': row['full_name'],
+                        'user_type': row['user_type']
                     })
 
             # Get unique categories in its own transaction
             try:
                 with get_db_cursor() as cur:
                     cur.execute("SELECT DISTINCT feedback_type FROM feedback WHERE feedback_type IS NOT NULL")
-                    categories = [row[0] for row in cur.fetchall()]
+                    categories = [row['feedback_type'] for row in cur.fetchall()]
             except Exception as e:
                 print(f"Error getting categories: {e}")
                 categories = []
@@ -2371,7 +2387,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
                     result = cur.fetchone()
-                    pending_users = result[0] if result else 0
+                    pending_users = result['count'] if result else 0
             except Exception as e:
                 print(f"Error getting pending users: {e}")
                 pending_users = 0
@@ -2380,7 +2396,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
                     result = cur.fetchone()
-                    pending_feedback = result[0] if result else 0
+                    pending_feedback = result['count'] if result else 0
             except Exception as e:
                 print(f"Error getting pending feedback: {e}")
                 pending_feedback = 0
@@ -2389,7 +2405,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE status = 'pending'")
                     result = cur.fetchone()
-                    pending_diseases = result[0] if result else 0
+                    pending_diseases = result['count'] if result else 0
             except Exception:
                 pending_diseases = 0
 
@@ -2397,7 +2413,7 @@ def register_user_routes(app):
                 with get_db_cursor() as cur:
                     cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
                     result = cur.fetchone()
-                    pending_reviews = result[0] if result else 0
+                    pending_reviews = result['count'] if result else 0
             except Exception as e:
                 print(f"Error getting pending reviews: {e}")
                 pending_reviews = 0
@@ -2442,28 +2458,28 @@ def register_user_routes(app):
                 if not row:
                     return jsonify({'error': 'Feedback not found'}), 404
 
-                # Convert to dict (simplified)
+                # Convert to dict
                 feedback = {
-                    'id': row[0],
-                    'user_id': row[1],
-                    'diagnosis_id': row[2],
-                    'name': row[3],
-                    'email': row[4],
-                    'feedback_type': row[5],
-                    'subject': row[6],
-                    'message': row[7],
-                    'image_path': row[8],
-                    'rating': row[9],
-                    'accuracy_rating': row[10],
-                    'feedback_text': row[11],
-                    'suggestions': row[12],
-                    'status': row[13],
-                    'admin_response': row[14],
-                    'created_at': row[15].isoformat() if row[15] else None,
-                    'username': row[16],
-                    'full_name': row[17],
-                    'email': row[18] or row[4],
-                    'user_type': row[19]
+                    'id': row['id'],
+                    'user_id': row['user_id'],
+                    'diagnosis_id': row['diagnosis_id'],
+                    'name': row['name'],
+                    'email': row['email'],
+                    'feedback_type': row['feedback_type'],
+                    'subject': row['subject'],
+                    'message': row['message'],
+                    'image_path': row['image_path'],
+                    'rating': row['rating'],
+                    'accuracy_rating': row['accuracy_rating'],
+                    'feedback_text': row['feedback_text'],
+                    'suggestions': row['suggestions'],
+                    'status': row['status'],
+                    'admin_response': row['admin_response'],
+                    'created_at': row['created_at'].isoformat() if row['created_at'] else None,
+                    'username': row['username'],
+                    'full_name': row['full_name'],
+                    'email': row['email'] or row['email'],
+                    'user_type': row['user_type']
                 }
 
             return jsonify(feedback)
@@ -2559,22 +2575,23 @@ def register_user_routes(app):
                 diseases = []
                 for row in cur.fetchall():
                     diseases.append({
-                        'id': row[0],
-                        'disease_code': row[1],
-                        'crop': row[2],
-                        'cause': row[3],
-                        'symptoms': row[4],
-                        'organic_treatment': row[5],
-                        'chemical_treatment': row[6],
-                        'prevention': row[7],
-                        'manual_treatment': row[8],
-                        'created_at': row[9],
-                        'sample_count': row[10]
+                        'id': row['id'],
+                        'disease_code': row['disease_code'],
+                        'crop': row['crop'],
+                        'cause': row['cause'],
+                        'symptoms': row['symptoms'],
+                        'organic_treatment': row['organic_treatment'],
+                        'chemical_treatment': row['chemical_treatment'],
+                        'prevention': row['prevention'],
+                        'manual_treatment': row['manual_treatment'],
+                        'created_at': row['created_at'],
+                        'sample_count': row['sample_count']
                     })
 
                 # Get total count
                 cur.execute("SELECT COUNT(*) as total FROM disease_info WHERE crop = %s", (crop,))
-                total = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
 
                 # Get sample images for each disease
                 for disease in diseases:
@@ -2586,29 +2603,35 @@ def register_user_routes(app):
                     """, (crop, disease['disease_code']))
                     sample = cur.fetchone()
                     if sample:
-                        disease['sample_image'] = url_for('get_disease_sample_image', sample_id=sample[0])
+                        disease['sample_image'] = url_for('get_disease_sample_image', sample_id=sample['id'])
                     else:
                         disease['sample_image'] = None
 
                 # Get crop statistics
                 cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE crop = 'corn'")
-                corn_count = cur.fetchone()[0] or 0
+                corn_count_row = cur.fetchone()
+                corn_count = corn_count_row['count'] if corn_count_row else 0
                 cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE crop = 'rice'")
-                rice_count = cur.fetchone()[0] or 0
+                rice_count_row = cur.fetchone()
+                rice_count = rice_count_row['count'] if rice_count_row else 0
 
                 crop_stats = {'corn_count': corn_count, 'rice_count': rice_count}
 
                 # Get sidebar stats
                 cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
-                pending_users = cur.fetchone()[0] or 0
+                pending_users_row = cur.fetchone()
+                pending_users = pending_users_row['count'] if pending_users_row else 0
                 cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+                pending_feedback_row = cur.fetchone()
+                pending_feedback = pending_feedback_row['count'] if pending_feedback_row else 0
                 cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
-                pending_reviews = cur.fetchone()[0] or 0
+                pending_reviews_row = cur.fetchone()
+                pending_reviews = pending_reviews_row['count'] if pending_reviews_row else 0
 
                 try:
                     cur.execute("SELECT COUNT(*) as count FROM disease_info WHERE status = 'pending'")
-                    pending_diseases = cur.fetchone()[0] or 0
+                    pending_diseases_row = cur.fetchone()
+                    pending_diseases = pending_diseases_row['count'] if pending_diseases_row else 0
                 except:
                     pending_diseases = 0
 
@@ -2700,7 +2723,8 @@ def register_user_routes(app):
             with get_db_cursor() as cur:
                 # Get total count for pagination
                 cur.execute(count_query, count_params)
-                total = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
                 total_pages = (total + per_page - 1) // per_page if total > 0 else 1
 
                 # Add pagination
@@ -2711,19 +2735,19 @@ def register_user_routes(app):
                 diagnoses = []
                 for row in cur.fetchall():
                     diagnoses.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'crop': row[2],
-                        'disease_detected': row[3],
-                        'confidence': row[4],
-                        'symptoms': row[5],
-                        'recommendations': row[6],
-                        'created_at': row[7],
-                        'expert_review_status': row[8],
-                        'final_confidence_level': row[9],
-                        'image_processed': row[10],
-                        'farmer_name': row[11],
-                        'reviewed_by_name': row[12]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'symptoms': row['symptoms'],
+                        'recommendations': row['recommendations'],
+                        'created_at': row['created_at'],
+                        'expert_review_status': row['expert_review_status'],
+                        'final_confidence_level': row['final_confidence_level'],
+                        'image_processed': row['image_processed'],
+                        'farmer_name': row['farmer_name'],
+                        'reviewed_by_name': row['reviewed_by_name']
                     })
 
                 # Get statistics
@@ -2739,27 +2763,30 @@ def register_user_routes(app):
                 """)
                 stats_row = cur.fetchone()
                 stats = {
-                    'total': stats_row[0] or 0,
-                    'accurate': stats_row[1] or 0,
-                    'needs_correction': stats_row[2] or 0,
-                    'rejected': stats_row[3] or 0,
-                    'pending': stats_row[4] or 0,
-                    'avg_confidence': round(stats_row[5] or 0, 1)
+                    'total': stats_row['total'] or 0,
+                    'accurate': stats_row['accurate'] or 0,
+                    'needs_correction': stats_row['needs_correction'] or 0,
+                    'rejected': stats_row['rejected'] or 0,
+                    'pending': stats_row['pending'] or 0,
+                    'avg_confidence': round(stats_row['avg_confidence'] or 0, 1)
                 }
 
                 # Get unique crops for filter
                 cur.execute("SELECT DISTINCT crop FROM diagnosis_history WHERE crop IS NOT NULL ORDER BY crop")
-                crops = [row[0] for row in cur.fetchall()]
+                crops = [row['crop'] for row in cur.fetchall()]
 
                 # Get sidebar stats
                 cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
-                pending_users = cur.fetchone()[0] or 0
+                pending_users_row = cur.fetchone()
+                pending_users = pending_users_row['count'] if pending_users_row else 0
 
                 cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+                pending_feedback_row = cur.fetchone()
+                pending_feedback = pending_feedback_row['count'] if pending_feedback_row else 0
 
                 cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
-                pending_reviews = cur.fetchone()[0] or 0
+                pending_reviews_row = cur.fetchone()
+                pending_reviews = pending_reviews_row['count'] if pending_reviews_row else 0
 
             sidebar_stats = {
                 'pending_users': pending_users,
@@ -2814,8 +2841,8 @@ def register_user_routes(app):
                 user_distribution = []
                 for row in cur.fetchall():
                     user_distribution.append({
-                        'user_type': row[0],
-                        'count': row[1]
+                        'user_type': row['user_type'],
+                        'count': row['count']
                     })
 
                 # DAILY NEW USERS
@@ -2831,8 +2858,8 @@ def register_user_routes(app):
                 user_growth = []
                 for row in cur.fetchall():
                     user_growth.append({
-                        'date': row[0].strftime('%Y-%m-%d') if row[0] else None,
-                        'new_users': row[1]
+                        'date': row['date'].strftime('%Y-%m-%d') if row['date'] else None,
+                        'new_users': row['new_users']
                     })
 
                 # DAILY DIAGNOSES
@@ -2848,8 +2875,8 @@ def register_user_routes(app):
                 daily_diagnoses = []
                 for row in cur.fetchall():
                     daily_diagnoses.append({
-                        'date': row[0].strftime('%Y-%m-%d') if row[0] else None,
-                        'diagnoses': row[1]
+                        'date': row['date'].strftime('%Y-%m-%d') if row['date'] else None,
+                        'diagnoses': row['diagnoses']
                     })
 
                 # DIAGNOSES BY CROP
@@ -2867,9 +2894,9 @@ def register_user_routes(app):
                 top_crops = []
                 for row in cur.fetchall():
                     top_crops.append({
-                        'crop': row[0],
-                        'count': row[1],
-                        'avg_confidence': round(row[2] or 0, 1)
+                        'crop': row['crop'],
+                        'count': row['count'],
+                        'avg_confidence': round(row['avg_confidence'] or 0, 1)
                     })
 
                 # TOP DISEASES
@@ -2889,17 +2916,19 @@ def register_user_routes(app):
                 top_diseases = []
                 for row in cur.fetchall():
                     top_diseases.append({
-                        'disease_detected': row[0],
-                        'count': row[1],
-                        'avg_confidence': round(row[2] or 0, 1)
+                        'disease_detected': row['disease_detected'],
+                        'count': row['count'],
+                        'avg_confidence': round(row['avg_confidence'] or 0, 1)
                     })
 
                 # Pending counts for sidebar
                 cur.execute("SELECT COUNT(*) as count FROM users WHERE is_active = FALSE")
-                pending_users = cur.fetchone()[0] or 0
+                pending_users_row = cur.fetchone()
+                pending_users = pending_users_row['count'] if pending_users_row else 0
 
                 cur.execute("SELECT COUNT(*) as count FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+                pending_feedback_row = cur.fetchone()
+                pending_feedback = pending_feedback_row['count'] if pending_feedback_row else 0
 
             stats = {
                 'pending_users': pending_users,
@@ -2949,18 +2978,18 @@ def register_user_routes(app):
                 admin_row = cur.fetchone()
                 
                 admin = {
-                    'id': admin_row[0],
-                    'username': admin_row[1],
-                    'email': admin_row[2],
-                    'full_name': admin_row[3],
-                    'user_type': admin_row[4],
-                    'phone': admin_row[5],
-                    'location': admin_row[6],
-                    'bio': admin_row[7],
-                    'profile_image': admin_row[8],
-                    'is_active': admin_row[9],
-                    'created_at': admin_row[10],
-                    'last_login': admin_row[11]
+                    'id': admin_row['id'],
+                    'username': admin_row['username'],
+                    'email': admin_row['email'],
+                    'full_name': admin_row['full_name'],
+                    'user_type': admin_row['user_type'],
+                    'phone': admin_row['phone_number'],
+                    'location': admin_row['location'],
+                    'bio': admin_row['bio'],
+                    'profile_image': admin_row['profile_image'],
+                    'is_active': admin_row['is_active'],
+                    'created_at': admin_row['created_at'],
+                    'last_login': admin_row['last_login']
                 }
 
                 # Get user settings
@@ -2969,25 +2998,25 @@ def register_user_routes(app):
                     settings_row = cur.fetchone()
                     if settings_row:
                         user_settings = {
-                            'email_notifications': settings_row[1],
-                            'email_updates': settings_row[2],
-                            'email_newsletter': settings_row[3],
-                            'email_promotions': settings_row[4],
-                            'app_notifications': settings_row[5],
-                            'app_security': settings_row[6],
-                            'app_reminders': settings_row[7],
-                            'frequency': settings_row[8],
-                            'profile_public': settings_row[9],
-                            'show_diagnosis': settings_row[10],
-                            'data_collection': settings_row[11],
-                            'theme': settings_row[12],
-                            'density': settings_row[13],
-                            'auto_save': settings_row[14],
-                            'show_tips': settings_row[15],
-                            'detailed_results': settings_row[16],
-                            'quick_analysis': settings_row[17],
-                            'default_crop': settings_row[18],
-                            'measurement_unit': settings_row[19]
+                            'email_notifications': settings_row['email_notifications'],
+                            'email_updates': settings_row['email_updates'],
+                            'email_newsletter': settings_row['email_newsletter'],
+                            'email_promotions': settings_row['email_promotions'],
+                            'app_notifications': settings_row['app_notifications'],
+                            'app_security': settings_row['app_security'],
+                            'app_reminders': settings_row['app_reminders'],
+                            'frequency': settings_row['frequency'],
+                            'profile_public': settings_row['profile_public'],
+                            'show_diagnosis': settings_row['show_diagnosis'],
+                            'data_collection': settings_row['data_collection'],
+                            'theme': settings_row['theme'],
+                            'density': settings_row['density'],
+                            'auto_save': settings_row['auto_save'],
+                            'show_tips': settings_row['show_tips'],
+                            'detailed_results': settings_row['detailed_results'],
+                            'quick_analysis': settings_row['quick_analysis'],
+                            'default_crop': settings_row['default_crop'],
+                            'measurement_unit': settings_row['measurement_unit']
                         }
                     else:
                         user_settings = {}
@@ -2996,13 +3025,16 @@ def register_user_routes(app):
 
                 # Get system statistics
                 cur.execute("SELECT COUNT(*) as total FROM users")
-                total_users = cur.fetchone()[0] or 0
+                total_users_row = cur.fetchone()
+                total_users = total_users_row['total'] if total_users_row else 0
 
                 cur.execute("SELECT COUNT(*) as total FROM diagnosis_history")
-                total_diagnoses = cur.fetchone()[0] or 0
+                total_diagnoses_row = cur.fetchone()
+                total_diagnoses = total_diagnoses_row['total'] if total_diagnoses_row else 0
 
                 cur.execute("SELECT COUNT(*) as total FROM feedback WHERE status = 'pending'")
-                pending_feedback = cur.fetchone()[0] or 0
+                pending_feedback_row = cur.fetchone()
+                pending_feedback = pending_feedback_row['total'] if pending_feedback_row else 0
 
             recent_activities = [
                 {
@@ -3130,19 +3162,19 @@ def register_user_routes(app):
                 return redirect(url_for('login'))
             
             user = {
-                'id': user_row[0],
-                'username': user_row[1],
-                'email': user_row[2],
-                'full_name': user_row[3],
-                'phone_number': user_row[4],
-                'location': user_row[5],
-                'profile_image': user_row[6],
-                'user_type': user_row[7],
-                'is_active': user_row[8],
-                'created_at': user_row[9],
-                'last_login': user_row[10],
-                'bio': user_row[11],
-                'language': user_row[12] if len(user_row) > 12 else 'en'
+                'id': user_row['id'],
+                'username': user_row['username'],
+                'email': user_row['email'],
+                'full_name': user_row['full_name'],
+                'phone_number': user_row['phone_number'],
+                'location': user_row['location'],
+                'profile_image': user_row['profile_image'],
+                'user_type': user_row['user_type'],
+                'is_active': user_row['is_active'],
+                'created_at': user_row['created_at'],
+                'last_login': user_row['last_login'],
+                'bio': user_row['bio'],
+                'language': user_row.get('language', 'en') if 'language' in user_row else 'en'
             }
 
             # Get user settings
@@ -3151,25 +3183,25 @@ def register_user_routes(app):
                 settings_row = cur.fetchone()
                 if settings_row:
                     user_settings = {
-                        'email_notifications': settings_row[1],
-                        'email_updates': settings_row[2],
-                        'email_newsletter': settings_row[3],
-                        'email_promotions': settings_row[4],
-                        'app_notifications': settings_row[5],
-                        'app_security': settings_row[6],
-                        'app_reminders': settings_row[7],
-                        'frequency': settings_row[8],
-                        'profile_public': settings_row[9],
-                        'show_diagnosis': settings_row[10],
-                        'data_collection': settings_row[11],
-                        'theme': settings_row[12],
-                        'density': settings_row[13],
-                        'auto_save': settings_row[14],
-                        'show_tips': settings_row[15],
-                        'detailed_results': settings_row[16],
-                        'quick_analysis': settings_row[17],
-                        'default_crop': settings_row[18],
-                        'measurement_unit': settings_row[19]
+                        'email_notifications': settings_row['email_notifications'],
+                        'email_updates': settings_row['email_updates'],
+                        'email_newsletter': settings_row['email_newsletter'],
+                        'email_promotions': settings_row['email_promotions'],
+                        'app_notifications': settings_row['app_notifications'],
+                        'app_security': settings_row['app_security'],
+                        'app_reminders': settings_row['app_reminders'],
+                        'frequency': settings_row['frequency'],
+                        'profile_public': settings_row['profile_public'],
+                        'show_diagnosis': settings_row['show_diagnosis'],
+                        'data_collection': settings_row['data_collection'],
+                        'theme': settings_row['theme'],
+                        'density': settings_row['density'],
+                        'auto_save': settings_row['auto_save'],
+                        'show_tips': settings_row['show_tips'],
+                        'detailed_results': settings_row['detailed_results'],
+                        'quick_analysis': settings_row['quick_analysis'],
+                        'default_crop': settings_row['default_crop'],
+                        'measurement_unit': settings_row['measurement_unit']
                     }
                 else:
                     # Create default settings if they don't exist
@@ -3212,9 +3244,9 @@ def register_user_routes(app):
             stats_row = cur.fetchone()
             
             account_stats = {
-                'created_at': stats_row[0],
-                'last_login': stats_row[1],
-                'total_diagnosis': stats_row[2] or 0
+                'created_at': stats_row['created_at'],
+                'last_login': stats_row['last_login'],
+                'total_diagnosis': stats_row['total_diagnosis'] or 0
             }
 
         # Handle form submissions
@@ -3255,7 +3287,7 @@ def register_user_routes(app):
                 cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
                 user_row = cur.fetchone()
 
-                if user_row and check_password(current_password, user_row[0]):
+                if user_row and check_password(current_password, user_row['password_hash']):
                     if new_password == confirm_password:
                         new_hash = hash_password(new_password)
                         cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, user_id))
@@ -3283,7 +3315,7 @@ def register_user_routes(app):
         with get_db_cursor() as cur:
             cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
             user_row = cur.fetchone()
-            old_image = user_row[0] if user_row else None
+            old_image = user_row['profile_image'] if user_row else None
 
         # Handle profile image upload
         profile_image = None
@@ -3438,22 +3470,25 @@ def register_user_routes(app):
                 expert_row = cur.fetchone()
                 
                 expert = {
-                    'username': expert_row[0],
-                    'full_name': expert_row[1],
-                    'email': expert_row[2],
-                    'profile_image': expert_row[3],
-                    'created_at': expert_row[4]
+                    'username': expert_row['username'],
+                    'full_name': expert_row['full_name'],
+                    'email': expert_row['email'],
+                    'profile_image': expert_row['profile_image'],
+                    'created_at': expert_row['created_at']
                 }
 
                 # Get statistics
                 cur.execute("SELECT COUNT(*) as count FROM diagnosis_history WHERE expert_review_status = 'pending'")
-                pending_reviews = cur.fetchone()[0] or 0
+                pending_row = cur.fetchone()
+                pending_reviews = pending_row['count'] if pending_row else 0
 
                 cur.execute("SELECT COUNT(*) as count FROM diagnosis_history")
-                total_diagnoses = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total_diagnoses = total_row['count'] if total_row else 0
 
                 cur.execute("SELECT COUNT(*) as count FROM disease_info")
-                disease_count = cur.fetchone()[0] or 0
+                disease_row = cur.fetchone()
+                disease_count = disease_row['count'] if disease_row else 0
 
                 # Get recent diagnoses needing review
                 cur.execute("""
@@ -3469,12 +3504,12 @@ def register_user_routes(app):
                 recent_diagnoses = []
                 for row in cur.fetchall():
                     recent_diagnoses.append({
-                        'id': row[0],
-                        'crop': row[1],
-                        'disease_detected': row[2],
-                        'confidence': row[3],
-                        'created_at': row[4],
-                        'farmer_name': row[5]
+                        'id': row['id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'created_at': row['created_at'],
+                        'farmer_name': row['farmer_name']
                     })
 
             return render_template("expert/dashboard.html",
@@ -3509,7 +3544,8 @@ def register_user_routes(app):
                     FROM diagnosis_history 
                     WHERE expert_review_status = 'pending' OR expert_review_status IS NULL
                 """)
-                total = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
                 total_pages = (total + per_page - 1) // per_page if total > 0 else 1
 
                 # Get pending diagnoses
@@ -3528,17 +3564,17 @@ def register_user_routes(app):
                 diagnoses = []
                 for row in cur.fetchall():
                     diagnoses.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'crop': row[2],
-                        'disease_detected': row[3],
-                        'confidence': row[4],
-                        'symptoms': row[5],
-                        'recommendations': row[6],
-                        'created_at': row[7],
-                        'image_processed': row[8],
-                        'farmer_name': row[9],
-                        'farmer_full_name': row[10]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'symptoms': row['symptoms'],
+                        'recommendations': row['recommendations'],
+                        'created_at': row['created_at'],
+                        'image_processed': row['image_processed'],
+                        'farmer_name': row['farmer_name'],
+                        'farmer_full_name': row['farmer_full_name']
                     })
 
                 # Get all diseases for correction dropdown - use disease_code instead of disease_name
@@ -3546,10 +3582,10 @@ def register_user_routes(app):
                 diseases = []
                 for row in cur.fetchall():
                     diseases.append({
-                        'id': row[0],
-                        'disease_code': row[1],
-                        'disease_name': row[1].replace('_', ' ').title(),  # Convert to readable name
-                        'crop': row[2]
+                        'id': row['id'],
+                        'disease_code': row['disease_code'],
+                        'disease_name': row['disease_code'].replace('_', ' ').title(),  # Convert to readable name
+                        'crop': row['crop']
                     })
 
             return render_template("expert/pending_reviews.html",
@@ -3584,7 +3620,8 @@ def register_user_routes(app):
                     WHERE expert_review_status IS NOT NULL 
                     AND expert_review_status != 'pending'
                 """)
-                total = cur.fetchone()[0] or 0
+                total_row = cur.fetchone()
+                total = total_row['total'] if total_row else 0
                 total_pages = (total + per_page - 1) // per_page if total > 0 else 1
 
                 # Get review history
@@ -3606,16 +3643,16 @@ def register_user_routes(app):
                 reviews = []
                 for row in cur.fetchall():
                     reviews.append({
-                        'id': row[0],
-                        'user_id': row[1],
-                        'crop': row[2],
-                        'disease_detected': row[3],
-                        'confidence': row[4],
-                        'expert_review_status': row[5],
-                        'created_at': row[6],
-                        'reviewed_at': row[7],
-                        'farmer_name': row[8],
-                        'reviewed_by_name': row[9]
+                        'id': row['id'],
+                        'user_id': row['user_id'],
+                        'crop': row['crop'],
+                        'disease_detected': row['disease_detected'],
+                        'confidence': row['confidence'],
+                        'expert_review_status': row['expert_review_status'],
+                        'created_at': row['created_at'],
+                        'reviewed_at': row['reviewed_at'],
+                        'farmer_name': row['farmer_name'],
+                        'reviewed_by_name': row['reviewed_by_name']
                     })
 
                 # Get statistics
@@ -3631,10 +3668,10 @@ def register_user_routes(app):
                 """)
                 stats_row = cur.fetchone()
                 stats = {
-                    'total_reviews': stats_row[0] or 0,
-                    'approved_count': stats_row[1] or 0,
-                    'correction_count': stats_row[2] or 0,
-                    'rejected_count': stats_row[3] or 0
+                    'total_reviews': stats_row['total_reviews'] or 0,
+                    'approved_count': stats_row['approved_count'] or 0,
+                    'correction_count': stats_row['correction_count'] or 0,
+                    'rejected_count': stats_row['rejected_count'] or 0
                 }
 
             return render_template("expert/history.html",
@@ -3690,25 +3727,25 @@ def register_user_routes(app):
                 questions = []
                 for row in cur.fetchall():
                     questions.append({
-                        'id': row[0],
-                        'crop': row[1],
-                        'disease_code': row[2],
-                        'disease_name': row[2].replace('_', ' ').title() if row[2] else 'N/A',
-                        'question_text': row[3],
-                        'question_category': row[4],
-                        'display_order': row[5],
-                        'created_at': row[6]
+                        'id': row['id'],
+                        'crop': row['crop'],
+                        'disease_code': row['disease_code'],
+                        'disease_name': row['disease_code'].replace('_', ' ').title() if row['disease_code'] else 'N/A',
+                        'question_text': row['question_text'],
+                        'question_category': row['question_category'],
+                        'display_order': row['display_order'],
+                        'created_at': row['created_at']
                     })
 
                 # Get unique values for filter dropdowns
                 cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
-                crops = [row[0] for row in cur.fetchall()]
+                crops = [row['crop'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
-                diseases = [row[0] for row in cur.fetchall()]
+                diseases = [row['disease_code'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
-                categories = [row[0] for row in cur.fetchall()]
+                categories = [row['question_category'] for row in cur.fetchall()]
 
             return render_template("expert/questions.html",
                                    questions=questions,
@@ -3737,13 +3774,13 @@ def register_user_routes(app):
             with get_db_cursor() as cur:
                 # Get existing crops, diseases, and categories for dropdowns
                 cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
-                crops = [row[0] for row in cur.fetchall()]
+                crops = [row['crop'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
-                diseases = [row[0] for row in cur.fetchall()]
+                diseases = [row['disease_code'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
-                categories = [row[0] for row in cur.fetchall()]
+                categories = [row['question_category'] for row in cur.fetchall()]
 
             return render_template("expert/add_question.html",
                                    crops=crops,
@@ -3798,29 +3835,29 @@ def register_user_routes(app):
 
                 # Convert to dict
                 question = {
-                    'id': question_row[0],
-                    'crop': question_row[1],
-                    'disease_code': question_row[2],
-                    'question_text': question_row[3],
-                    'yes_score': question_row[4],
-                    'no_score': question_row[5],
-                    'question_category': question_row[6],
-                    'priority': question_row[7],
-                    'depends_on': question_row[8],
-                    'show_if_answer': question_row[9],
-                    'display_order': question_row[10],
-                    'created_at': question_row[11]
+                    'id': question_row['id'],
+                    'crop': question_row['crop'],
+                    'disease_code': question_row['disease_code'],
+                    'question_text': question_row['question_text'],
+                    'yes_score': question_row['yes_score'],
+                    'no_score': question_row['no_score'],
+                    'question_category': question_row['question_category'],
+                    'priority': question_row['priority'],
+                    'depends_on': question_row['depends_on'],
+                    'show_if_answer': question_row['show_if_answer'],
+                    'display_order': question_row['display_order'],
+                    'created_at': question_row['created_at']
                 }
 
                 # Get existing crops, diseases, and categories for dropdowns
                 cur.execute("SELECT DISTINCT crop FROM questions ORDER BY crop")
-                crops = [row[0] for row in cur.fetchall()]
+                crops = [row['crop'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT disease_code FROM questions ORDER BY disease_code")
-                diseases = [row[0] for row in cur.fetchall()]
+                diseases = [row['disease_code'] for row in cur.fetchall()]
 
                 cur.execute("SELECT DISTINCT question_category FROM questions ORDER BY question_category")
-                categories = [row[0] for row in cur.fetchall()]
+                categories = [row['question_category'] for row in cur.fetchall()]
 
             return render_template("expert/edit_question.html",
                                    question=question,
@@ -3897,22 +3934,22 @@ def register_user_routes(app):
                 diseases = []
                 for row in cur.fetchall():
                     diseases.append({
-                        'id': row[0],
-                        'crop': row[1],
-                        'disease_code': row[2],
-                        'disease_name': row[2].replace('_', ' ').title(),  # Convert code to readable name
-                        'cause': row[3],
-                        'symptoms': row[4],
-                        'organic_treatment': row[5],
-                        'chemical_treatment': row[6],
-                        'prevention': row[7],
-                        'manual_treatment': row[8],
-                        'created_at': row[9]
+                        'id': row['id'],
+                        'crop': row['crop'],
+                        'disease_code': row['disease_code'],
+                        'disease_name': row['disease_code'].replace('_', ' ').title(),  # Convert code to readable name
+                        'cause': row['cause'],
+                        'symptoms': row['symptoms'],
+                        'organic_treatment': row['organic_treatment'],
+                        'chemical_treatment': row['chemical_treatment'],
+                        'prevention': row['prevention'],
+                        'manual_treatment': row['manual_treatment'],
+                        'created_at': row['created_at']
                     })
 
                 # Get unique crops for filter
                 cur.execute("SELECT DISTINCT crop FROM disease_info ORDER BY crop")
-                crops = [row[0] for row in cur.fetchall()]
+                crops = [row['crop'] for row in cur.fetchall()]
 
             return render_template("expert/diseases.html",
                                    diseases=diseases,
@@ -3945,16 +3982,16 @@ def register_user_routes(app):
                     return redirect(url_for('expert_dashboard'))
 
                 user = {
-                    'id': user_row[0],
-                    'username': user_row[1],
-                    'email': user_row[2],
-                    'full_name': user_row[3] or '',
-                    'phone': user_row[4] or '',
-                    'location': user_row[5] or '',
-                    'bio': user_row[6] or '',
-                    'profile_image': user_row[7],
-                    'created_at': user_row[8],
-                    'last_login': user_row[9]
+                    'id': user_row['id'],
+                    'username': user_row['username'],
+                    'email': user_row['email'],
+                    'full_name': user_row['full_name'] or '',
+                    'phone': user_row['phone_number'] or '',
+                    'location': user_row['location'] or '',
+                    'bio': user_row['bio'] or '',
+                    'profile_image': user_row['profile_image'],
+                    'created_at': user_row['created_at'],
+                    'last_login': user_row['last_login']
                 }
 
             return render_template("expert/settings.html", 
@@ -4022,7 +4059,7 @@ def register_user_routes(app):
                 cur.execute("SELECT password_hash FROM users WHERE id = %s", (session['user_id'],))
                 user_row = cur.fetchone()
 
-                if not user_row or not check_password(current_password, user_row[0]):
+                if not user_row or not check_password(current_password, user_row['password_hash']):
                     flash('Current password is incorrect!', 'danger')
                     return redirect(url_for('expert_settings'))
 
@@ -4076,7 +4113,7 @@ def register_user_routes(app):
             with get_db_cursor() as cur:
                 cur.execute("SELECT profile_image FROM users WHERE id = %s", (user_id,))
                 user_row = cur.fetchone()
-                old_image = user_row[0] if user_row else None
+                old_image = user_row['profile_image'] if user_row else None
 
             # Delete old image if exists
             if old_image:

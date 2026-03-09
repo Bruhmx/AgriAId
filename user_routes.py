@@ -1077,6 +1077,7 @@ def register_user_routes(app):
             print(f"Save diagnosis error: {e}")
             return jsonify({'success': False, 'message': 'Operation failed!'})
 
+    # ========== FIXED SAVED DIAGNOSES ROUTE ==========
     @app.route("/saved")
     @login_required
     def saved_diagnoses():
@@ -1085,11 +1086,11 @@ def register_user_routes(app):
 
         try:
             with get_db_cursor() as cur:
-                # Get saved diagnoses
+                # Get saved diagnoses - FIXED: changed dh.image to dh.image_path
                 cur.execute("""
                     SELECT sd.id, sd.user_id, sd.crop, sd.disease, sd.confidence,
                            sd.symptoms, sd.recommendations, sd.status, sd.created_at,
-                           dh.image
+                           dh.image_path
                     FROM saved_diagnoses sd
                     LEFT JOIN diagnosis_history dh ON sd.id = dh.id
                     WHERE sd.user_id = %s
@@ -1108,7 +1109,7 @@ def register_user_routes(app):
                         'recommendations': row['recommendations'],
                         'status': row['status'],
                         'created_at': row['created_at'],
-                        'image': row['image']
+                        'image': row['image_path']  # Changed from row['image'] to row['image_path']
                     })
 
             # --- CALCULATE STATS ---
@@ -1144,48 +1145,7 @@ def register_user_routes(app):
             flash('Error loading saved diagnoses', 'danger')
             return redirect(url_for('dashboard'))
 
-    @app.route("/api/diagnosis/<int:diagnosis_id>", methods=["DELETE"])
-    @login_required
-    def delete_diagnosis(diagnosis_id):
-        """Delete a diagnosis"""
-        user_id = session['user_id']
-
-        try:
-            with get_db_cursor() as cur:
-                cur.execute("""
-                    DELETE FROM diagnosis_history 
-                    WHERE id = %s AND user_id = %s
-                """, (diagnosis_id, user_id))
-
-            return jsonify({'success': True})
-
-        except Exception as e:
-            print(f"Delete error: {e}")
-            return jsonify({'success': False, 'error': str(e)}), 500
-
-    @app.route("/api/diagnosis/delete-all", methods=["DELETE"])
-    @login_required
-    def delete_all_diagnoses():
-        """Delete all diagnoses for current user"""
-        user_id = session['user_id']
-
-        try:
-            with get_db_cursor() as cur:
-                cur.execute("""
-                    DELETE FROM diagnosis_history
-                    WHERE user_id = %s
-                """, (user_id,))
-                deleted_count = cur.rowcount
-
-            return jsonify({
-                'success': True,
-                'message': f'Successfully deleted {deleted_count} diagnoses'
-            })
-
-        except Exception as e:
-            print(f"Delete all error: {e}")
-            return jsonify({'success': False, 'error': str(e)}), 500
-
+    # ========== FIXED TOGGLE SAVE DIAGNOSIS ROUTE ==========
     @app.route('/api/diagnosis/<int:diagnosis_id>/toggle-save', methods=['POST'])
     @login_required
     def toggle_save_diagnosis(diagnosis_id):
